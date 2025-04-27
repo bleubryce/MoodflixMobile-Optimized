@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "MoodflixMobile",
+    "slug": "MoodflixMobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "org.name.MoodflixMobile"
+    },
+    "android": {
+      "package": "org.name.MoodflixMobile"
+    }
+  }
+}
