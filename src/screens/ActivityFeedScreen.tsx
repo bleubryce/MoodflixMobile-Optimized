@@ -1,39 +1,51 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
-import { Text, Card, Button, Avatar, Divider, useTheme } from 'react-native-paper';
+import { Text, Card, Button, Avatar, useTheme } from 'react-native-paper';
 import { useSocial } from '../contexts/SocialContext';
 import { useNavigation } from '@react-navigation/native';
 import { formatDistanceToNow } from 'date-fns';
+import { images } from '../constants/assets';
+import type { RootStackParamList } from '../types/navigation';
+import type { ActivityItem } from '../types/activity';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
+type ActivityFeedScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const ActivityFeedScreen: React.FC = () => {
   const { activityFeed, isLoadingActivity, loadMoreActivity, refreshActivity } = useSocial();
-  const navigation = useNavigation();
+  const navigation = useNavigation<ActivityFeedScreenNavigationProp>();
   const theme = useTheme();
 
-  const renderActivityItem = ({ item }) => {
+  const renderActivityItem = ({ item }: { item: ActivityItem }) => {
     let actionText = '';
     let icon = '';
-    let navigateTo = null;
-    let navigateParams = {};
+    let navigateTo: keyof RootStackParamList | null = null;
+    let navigateParams: { movieId: number } | {} = {};
 
     switch (item.type) {
       case 'watch':
         actionText = 'watched a movie';
         icon = 'movie';
         navigateTo = 'MovieDetail';
-        navigateParams = { movieId: item.resourceId };
+        if (item.resourceId) {
+          navigateParams = { movieId: parseInt(item.resourceId, 10) };
+        }
         break;
       case 'rate':
         actionText = 'rated a movie';
         icon = 'star';
         navigateTo = 'MovieDetail';
-        navigateParams = { movieId: item.resourceId };
+        if (item.resourceId) {
+          navigateParams = { movieId: parseInt(item.resourceId, 10) };
+        }
         break;
       case 'recommend':
         actionText = 'recommended a movie';
         icon = 'thumb-up';
         navigateTo = 'MovieDetail';
-        navigateParams = { movieId: item.resourceId };
+        if (item.resourceId) {
+          navigateParams = { movieId: parseInt(item.resourceId, 10) };
+        }
         break;
       case 'friend':
         actionText = 'made a new friend';
@@ -58,11 +70,7 @@ export const ActivityFeedScreen: React.FC = () => {
           left={(props) => (
             <Avatar.Image
               {...props}
-              source={
-                item.avatarUrl
-                  ? { uri: item.avatarUrl }
-                  : require('../../assets/default-avatar.png')
-              }
+              source={item.avatarUrl ? { uri: item.avatarUrl } : images.defaultAvatar}
             />
           )}
           right={(props) => (
@@ -74,7 +82,7 @@ export const ActivityFeedScreen: React.FC = () => {
             {actionText} {item.content}
           </Text>
         </Card.Content>
-        {navigateTo && (
+        {navigateTo && 'movieId' in navigateParams && (
           <Card.Actions>
             <Button onPress={() => navigation.navigate(navigateTo, navigateParams)}>
               View Details

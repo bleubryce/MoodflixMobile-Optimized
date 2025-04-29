@@ -13,5 +13,7 @@ export interface OfflineService {
   subscribeToNetworkChanges: (callback: (isConnected: boolean) => void) => () => void;
   cacheMovies: (movies: Movie[]) => Promise<void>;
   getCachedMovies: () => Promise<Movie[]>;
-  clearCache: () => Promise<void>;
+  clearCache: (key?: string) => Promise<void>;
+  cacheData: <T>(key: string, data: T, ttl?: number) => Promise<void>;
+  getCachedData: <T>(key: string) => Promise<T | null>;
 } 

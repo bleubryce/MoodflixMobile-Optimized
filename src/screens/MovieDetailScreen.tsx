@@ -3,28 +3,20 @@ import { View, StyleSheet, ScrollView, Dimensions, Image } from 'react-native';
 import { Text, Button, Chip, useTheme, ActivityIndicator } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { TMDBMovieDetails } from '../types/tmdb';
-import { movieService } from '../services/movieService';
+import { getMovieDetails } from '../services/movieService';
 
-interface MovieDetails {
-  id: number;
-  title: string;
-  overview: string;
-  poster_path: string;
-  backdrop_path: string;
-  vote_average: number;
-  release_date: string;
-  genres: { id: number; name: string }[];
-}
+type Mood = 'Happy' | 'Sad' | 'Excited' | 'Relaxed' | 'Romantic';
 
-const moods = ['Happy', 'Sad', 'Excited', 'Relaxed', 'Romantic'];
+const moods: Mood[] = ['Happy', 'Sad', 'Excited', 'Relaxed', 'Romantic'];
 
-export const MovieDetailScreen = ({ route, navigation }: any) => {
+export default function MovieDetailScreen({ route, navigation }: any) {
   const { movieId } = route.params;
-  const [movie, setMovie] = useState<MovieDetails | null>(null);
+  const [movie, setMovie] = useState<TMDBMovieDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedMood, setSelectedMood] = useState<string>('');
+  const [selectedMood, setSelectedMood] = useState<Mood | ''>('');
   const { user } = useAuth();
   const theme = useTheme();
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMovieDetails();
@@ -32,20 +24,20 @@ export const MovieDetailScreen = ({ route, navigation }: any) => {
 
   const fetchMovieDetails = async () => {
     try {
-      // Replace with your actual API call
-      const response = await fetch(
-        `https://api.themoviedb.org/3/movie/${movieId}?api_key=YOUR_API_KEY`
-      );
-      const data = await response.json();
-      setMovie(data);
-    } catch (error) {
-      console.error('Error fetching movie details:', error);
+      const response = await getMovieDetails(movieId);
+      if (response.data) {
+        setMovie(response.data);
+      } else {
+        setError('Movie not found');
+      }
+    } catch (err) {
+      setError('Failed to fetch movie details');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleMoodSelect = (mood: string) => {
+  const handleMoodSelect = (mood: Mood) => {
     setSelectedMood(mood);
     // Here you would typically save the mood selection to your backend
   };
@@ -115,13 +107,14 @@ export const MovieDetailScreen = ({ route, navigation }: any) => {
             navigation.goBack();
           }}
           style={styles.button}
+          disabled={!selectedMood}
         >
           Save Mood
         </Button>
       </View>
     </ScrollView>
   );
-};
+}
 
 const { width } = Dimensions.get('window');
 
