@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
-import { Text } from 'react-native-paper';
-import { OfflineService } from '../../services/offlineService';
-import { useTheme } from 'react-native-paper';
+import { OfflineService } from "@services/offlineService";
+import React, { useEffect, useState } from "react";
+import { View, StyleSheet, Animated } from "react-native";
+import { Text, useTheme } from "react-native-paper";
 
 export const OfflineIndicator: React.FC = () => {
   const [isConnected, setIsConnected] = useState(true);
   const [opacity] = useState(new Animated.Value(0));
 
   useEffect(() => {
-    const unsubscribe = OfflineService.subscribeToNetworkChanges(setIsConnected);
+    const unsubscribe =
+      OfflineService.subscribeToNetworkChanges(setIsConnected);
     return () => unsubscribe();
   }, []);
 
@@ -42,16 +42,16 @@ export const OfflineIndicator: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#ff4444',
+    backgroundColor: "#ff4444",
     left: 0,
     padding: 8,
-    position: 'absolute',
+    position: "absolute",
     top: 0,
-    width: '100%',
+    width: "100%",
     zIndex: 1,
   },
   text: {
-    color: '#fff',
-    textAlign: 'center',
+    color: "#fff",
+    textAlign: "center",
   },
-}); 
+});

@@ -1,12 +1,13 @@
-import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { ThemeProvider } from '../contexts/ThemeContext';
-import { AuthProvider } from '../contexts/AuthContext';
-import { SocialProvider } from '../contexts/SocialContext';
-import FriendsScreen from '../screens/FriendsScreen';
-import ActivityFeedScreen from '../screens/ActivityFeedScreen';
-import WatchPartyScreen from '../screens/WatchPartyScreen';
+import { NavigationContainer } from "@react-navigation/native";
+import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import React from "react";
+
+import { AuthProvider } from "../contexts/AuthContext";
+import { SocialProvider } from "../contexts/SocialContext";
+import { ThemeProvider } from "../contexts/ThemeContext";
+import ActivityFeedScreen from "../screens/ActivityFeedScreen";
+import FriendsScreen from "../screens/FriendsScreen";
+import WatchPartyScreen from "../screens/WatchPartyScreen";
 
 // Mock navigation
 const mockNavigation = {
@@ -17,20 +18,20 @@ const mockNavigation = {
 // Mock route for WatchPartyScreen
 const mockRoute = {
   params: {
-    partyId: 'test-party-id',
+    partyId: "test-party-id",
   },
 };
 
 // Mock services
-jest.mock('../services/friendService', () => ({
+jest.mock("../services/friendService", () => ({
   FriendService: {
     getInstance: () => ({
       getFriends: jest.fn().mockResolvedValue([
         {
-          id: '1',
-          userId: 'user1',
-          name: 'Test User 1',
-          status: 'online',
+          id: "1",
+          userId: "user1",
+          name: "Test User 1",
+          status: "online",
           lastActive: new Date().toISOString(),
         },
       ]),
@@ -45,18 +46,18 @@ jest.mock('../services/friendService', () => ({
   },
 }));
 
-jest.mock('../services/activityService', () => ({
+jest.mock("../services/activityService", () => ({
   ActivityService: {
     getInstance: () => ({
       getActivityFeed: jest.fn().mockResolvedValue([
         {
-          id: '1',
-          userId: 'user1',
-          username: 'Test User 1',
-          type: 'watch',
-          content: 'Test Movie',
-          resourceId: 'movie1',
-          resourceType: 'movie',
+          id: "1",
+          userId: "user1",
+          username: "Test User 1",
+          type: "watch",
+          content: "Test Movie",
+          resourceId: "movie1",
+          resourceType: "movie",
           timestamp: new Date().toISOString(),
           isPrivate: false,
         },
@@ -68,29 +69,29 @@ jest.mock('../services/activityService', () => ({
   },
 }));
 
-jest.mock('../services/watchPartyService', () => ({
+jest.mock("../services/watchPartyService", () => ({
   WatchPartyService: {
     getInstance: () => ({
       joinWatchParty: jest.fn().mockResolvedValue({
-        id: 'test-party-id',
+        id: "test-party-id",
         movieId: 123,
         movie: {
           id: 123,
-          title: 'Test Movie',
-          overview: 'Test overview',
-          backdrop_path: 'test-path',
+          title: "Test Movie",
+          overview: "Test overview",
+          backdrop_path: "test-path",
         },
-        hostId: 'host1',
-        status: 'active',
+        hostId: "host1",
+        status: "active",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         participants: [
           {
-            userId: 'user1',
-            username: 'Test User 1',
+            userId: "user1",
+            username: "Test User 1",
             joinedAt: new Date().toISOString(),
             lastSeen: new Date().toISOString(),
-            status: 'active',
+            status: "active",
           },
         ],
         currentTime: 0,
@@ -107,10 +108,10 @@ jest.mock('../services/watchPartyService', () => ({
 }));
 
 // Mock expo-av
-jest.mock('expo-av', () => ({
-  Video: 'Video',
+jest.mock("expo-av", () => ({
+  Video: "Video",
   ResizeMode: {
-    CONTAIN: 'contain',
+    CONTAIN: "contain",
   },
 }));
 
@@ -119,65 +120,63 @@ const TestWrapper = ({ children }) => (
   <NavigationContainer>
     <ThemeProvider>
       <AuthProvider>
-        <SocialProvider>
-          {children}
-        </SocialProvider>
+        <SocialProvider>{children}</SocialProvider>
       </AuthProvider>
     </ThemeProvider>
   </NavigationContainer>
 );
 
-describe('Social Features', () => {
-  test('FriendsScreen renders correctly', async () => {
+describe("Social Features", () => {
+  test("FriendsScreen renders correctly", async () => {
     const { getByText, queryByText } = render(
       <TestWrapper>
         <FriendsScreen navigation={mockNavigation} />
-      </TestWrapper>
+      </TestWrapper>,
     );
-    
+
     // Wait for friends to load
     await waitFor(() => {
-      expect(getByText('Test User 1')).toBeTruthy();
+      expect(getByText("Test User 1")).toBeTruthy();
     });
-    
+
     // Check for UI elements
-    expect(getByText('Friends')).toBeTruthy();
-    expect(getByText('Requests')).toBeTruthy();
-    expect(queryByText('No pending friend requests')).toBeFalsy();
+    expect(getByText("Friends")).toBeTruthy();
+    expect(getByText("Requests")).toBeTruthy();
+    expect(queryByText("No pending friend requests")).toBeFalsy();
   });
-  
-  test('ActivityFeedScreen renders correctly', async () => {
+
+  test("ActivityFeedScreen renders correctly", async () => {
     const { getByText } = render(
       <TestWrapper>
         <ActivityFeedScreen navigation={mockNavigation} />
-      </TestWrapper>
+      </TestWrapper>,
     );
-    
+
     // Wait for activity feed to load
     await waitFor(() => {
-      expect(getByText('Test User 1')).toBeTruthy();
+      expect(getByText("Test User 1")).toBeTruthy();
     });
-    
+
     // Check for activity content
-    expect(getByText('watched a movie Test Movie')).toBeTruthy();
+    expect(getByText("watched a movie Test Movie")).toBeTruthy();
   });
 });
 
-describe('Watch Party Feature', () => {
-  test('WatchPartyScreen renders correctly', async () => {
+describe("Watch Party Feature", () => {
+  test("WatchPartyScreen renders correctly", async () => {
     const { getByText, queryByText } = render(
       <TestWrapper>
         <WatchPartyScreen navigation={mockNavigation} route={mockRoute} />
-      </TestWrapper>
+      </TestWrapper>,
     );
-    
+
     // Wait for watch party to load
     await waitFor(() => {
-      expect(getByText('Test Movie')).toBeTruthy();
+      expect(getByText("Test Movie")).toBeTruthy();
     });
-    
+
     // Check for UI elements
-    expect(queryByText('Loading watch party...')).toBeFalsy();
-    expect(queryByText('Watch party not found')).toBeFalsy();
+    expect(queryByText("Loading watch party...")).toBeFalsy();
+    expect(queryByText("Watch party not found")).toBeFalsy();
   });
 });

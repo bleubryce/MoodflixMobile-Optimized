@@ -1,8 +1,8 @@
-import { Movie } from './movie';
-import { User } from './auth';
-import { WatchParty, WatchPartyParticipant, ChatMessage } from './watchParty';
-import { NotificationPreferences } from './notifications';
-import { OfflineState } from './offline';
+import { Movie } from "./movie";
+import { User } from "./auth";
+import { WatchParty, WatchPartyParticipant, ChatMessage } from "./watchParty";
+import { NotificationPreferences } from "./notifications";
+import { OfflineState } from "./offline";
 
 export interface MovieService {
   getMovieDetails: (movieId: string) => Promise<Movie>;
@@ -18,14 +18,20 @@ export interface NotificationService {
   scheduleMoodSuggestionNotification: (mood: string) => Promise<void>;
   scheduleWatchReminder: (movieTitle: string) => Promise<void>;
   showLocalNotification: (title: string, body: string) => Promise<void>;
-  sendNotification: (userId: string, title: string, body: string) => Promise<void>;
+  sendNotification: (
+    userId: string,
+    title: string,
+    body: string,
+  ) => Promise<void>;
 }
 
 export interface OfflineService {
   getOfflineState: () => Promise<OfflineState>;
   updateOfflineState: (state: Partial<OfflineState>) => Promise<void>;
   isOffline: () => Promise<boolean>;
-  subscribeToNetworkChanges: (callback: (isConnected: boolean) => void) => () => void;
+  subscribeToNetworkChanges: (
+    callback: (isConnected: boolean) => void,
+  ) => () => void;
   cacheMovies: (movies: Movie[]) => Promise<void>;
   getCachedMovies: () => Promise<Movie[]>;
   clearCache: (key?: string) => Promise<void>;
@@ -40,7 +46,11 @@ export interface WatchPartyService {
   getPartyDetails: (partyId: string) => Promise<WatchParty>;
   updatePartyStatus: (partyId: string, status: string) => Promise<void>;
   sendChatMessage: (partyId: string, message: string) => Promise<void>;
-  updatePlaybackStatus: (partyId: string, currentTime: number, isPlaying: boolean) => Promise<void>;
+  updatePlaybackStatus: (
+    partyId: string,
+    currentTime: number,
+    isPlaying: boolean,
+  ) => Promise<void>;
   inviteUser: (partyId: string, userId: string) => Promise<void>;
   removeUser: (partyId: string, userId: string) => Promise<void>;
 }
@@ -72,7 +82,7 @@ export interface ActivityItem {
   data?: Record<string, any>;
 }
 
-declare module 'src/services/notificationService' {
+declare module "src/services/notificationService" {
   export const NotificationService: {
     getPreferences: () => Promise<NotificationPreferences>;
     updatePreferences: (preferences: NotificationPreferences) => Promise<void>;
@@ -80,29 +90,38 @@ declare module 'src/services/notificationService' {
   };
 }
 
-declare module 'src/services/offlineService' {
+declare module "src/services/offlineService" {
   export const OfflineService: {
     getOfflineState: () => Promise<OfflineState>;
     updateOfflineState: (state: Partial<OfflineState>) => Promise<void>;
     isOffline: () => Promise<boolean>;
-    subscribeToNetworkChanges: (callback: (isConnected: boolean) => void) => () => void;
+    subscribeToNetworkChanges: (
+      callback: (isConnected: boolean) => void,
+    ) => () => void;
     cacheMovies: (movies: Movie[]) => Promise<void>;
     getCachedMovies: () => Promise<Movie[]>;
     clearCache: () => Promise<void>;
   };
 }
 
-declare module 'src/services/authService' {
+declare module "src/services/authService" {
   export const AuthService: {
-    signIn: (email: string, password: string) => Promise<{ user: User; token: string }>;
-    signUp: (email: string, password: string, username: string) => Promise<{ user: User; token: string }>;
+    signIn: (
+      email: string,
+      password: string,
+    ) => Promise<{ user: User; token: string }>;
+    signUp: (
+      email: string,
+      password: string,
+      username: string,
+    ) => Promise<{ user: User; token: string }>;
     signOut: () => Promise<void>;
     resetPassword: (email: string) => Promise<void>;
     getCurrentUser: () => Promise<User | null>;
   };
 }
 
-declare module 'src/services/watchPartyService' {
+declare module "src/services/watchPartyService" {
   export const WatchPartyService: {
     createParty: (movieId: string, startTime: Date) => Promise<string>;
     joinParty: (partyId: string) => Promise<void>;
@@ -115,4 +134,4 @@ declare module 'src/services/watchPartyService' {
       participants: User[];
     }>;
   };
-} 
+}

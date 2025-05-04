@@ -12,7 +12,11 @@ export interface WatchParty {
   updatedAt: string;
 }
 
-export type WatchPartyStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+export type WatchPartyStatus =
+  | "scheduled"
+  | "in_progress"
+  | "completed"
+  | "cancelled";
 
 export interface WatchPartyParticipant {
   userId: string;
@@ -22,7 +26,7 @@ export interface WatchPartyParticipant {
   status: ParticipantStatus;
 }
 
-export type ParticipantStatus = 'invited' | 'joined' | 'left';
+export type ParticipantStatus = "invited" | "joined" | "left";
 
 export interface ChatMessage {
   id: string;
@@ -52,6 +56,6 @@ export interface WatchPartySearchParams {
   startTimeTo?: string;
   page?: number;
   limit?: number;
-  sortBy?: 'startTime' | 'createdAt';
-  sortOrder?: 'asc' | 'desc';
-} 
+  sortBy?: "startTime" | "createdAt";
+  sortOrder?: "asc" | "desc";
+}

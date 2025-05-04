@@ -7,4 +7,4 @@ export type RootStackParamList = {
   Profile: undefined;
   Settings: undefined;
   MovieDetails: { movieId: number };
-}; 
+};

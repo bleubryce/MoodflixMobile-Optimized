@@ -1,13 +1,13 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Text, Button } from 'react-native-paper';
-import { useAuth } from '../contexts/auth/AuthContext';
+import { useAuth } from "@contexts/auth/AuthContext";
+import React from "react";
+import { View, StyleSheet } from "react-native";
+import { Text, Button } from "react-native-paper";
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 16,
   },
   email: {
@@ -30,4 +30,4 @@ export const ProfileScreen: React.FC = () => {
       </Button>
     </View>
   );
-}; 
+};

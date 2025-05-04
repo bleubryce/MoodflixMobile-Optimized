@@ -1,163 +1,343 @@
-import { TMDBMovie } from '../types/tmdb';
-import { fetchPopularMovies, getWatchHistory, getFavorites } from './movieService';
-import { OfflineService } from './offlineService';
-import { MoodService } from './moodService';
+import { supabase } from "../lib/supabase";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CacheError, DatabaseError, AuthenticationError, ApiError } from "../types/errors";
+import { ErrorHandler } from "../utils/errorHandler";
+import { moodService } from "./moodService";
+import { Movie, movieService } from "./movieService";
+import { Mood } from "../types/mood";
 
-interface GenreWeight {
-  id: number;
-  weight: number;
+export interface RecommendationPreferences {
+  genres: number[];
+  excludedGenres: number[];
+  minRating: number;
+  maxRating: number;
+  releaseYearStart?: number;
+  releaseYearEnd?: number;
+  includeWatched: boolean;
 }
 
-interface MovieScore {
-  movie: TMDBMovie;
+export interface RecommendationResult {
+  movies: Movie[];
   score: number;
-  factors: {
-    genreMatch: number;
-    moodMatch: number;
-    rating: number;
-    popularity: number;
-  };
+  reason: string;
 }
 
-export class RecommendationService {
-  private static readonly CACHE_KEY = 'recommendations';
-  private static readonly CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+interface WatchHistoryItem {
+  movie_id: number;
+  rating: number;
+}
 
-  static async getPersonalizedRecommendations(
-    userId: string,
-    limit: number = 20
-  ): Promise<TMDBMovie[]> {
+class RecommendationService {
+  private readonly CACHE_KEY = "recommendations";
+  private readonly PREFERENCES_KEY = "recommendation_preferences";
+  private readonly errorHandler = ErrorHandler.getInstance();
+
+  async getRecommendations(
+    count: number = 10,
+    mood?: Mood,
+  ): Promise<RecommendationResult[]> {
     try {
-      // Try to get cached recommendations first
-      const cached = await OfflineService.getCachedData<TMDBMovie[]>(
-        this.CACHE_KEY,
-        this.CACHE_TTL
-      );
-      if (cached) {
-        return cached.slice(0, limit);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new AuthenticationError("User not authenticated", "auth", "supabase");
+
+      // Try cache first
+      try {
+        const cached = await AsyncStorage.getItem(this.CACHE_KEY);
+        if (cached) {
+          const { recommendations, timestamp } = JSON.parse(cached);
+          // Cache valid for 6 hours
+          if (Date.now() - timestamp < 6 * 60 * 60 * 1000) {
+            return recommendations;
+          }
+        }
+      } catch (cacheError) {
+        await this.errorHandler.handleError(
+          new CacheError(
+            "Failed to read recommendations cache",
+            this.CACHE_KEY,
+            "read"
+          ),
+          {
+            componentName: "RecommendationService",
+            action: "getRecommendations_cache",
+          }
+        );
       }
 
-      // Fetch necessary data
-      const [watchHistory, favorites, popularMovies] = await Promise.all([
-        getWatchHistory(userId),
-        getFavorites(userId),
-        fetchPopularMovies(),
-      ]);
+      // Get user's preferences
+      const preferences = await this.getPreferences();
 
-      // Calculate genre preferences
-      const genreWeights = this.calculateGenreWeights(watchHistory, favorites);
+      // Get user's watch history
+      const { data: watchHistory, error: watchHistoryError } = await supabase
+        .from("watch_history")
+        .select("movie_id, rating")
+        .eq("user_id", user.id);
 
-      // Score movies based on multiple factors
-      const scoredMovies = popularMovies.map((movie) => {
-        const score = this.calculateMovieScore(movie, genreWeights, watchHistory);
-        return { movie, score };
-      });
+      if (watchHistoryError) {
+        throw new DatabaseError(
+          "Failed to fetch watch history",
+          "read",
+          "watch_history",
+          watchHistoryError
+        );
+      }
 
-      // Sort by score and get top recommendations
-      const recommendations = scoredMovies
-        .sort((a, b) => b.score.score - a.score.score)
-        .map((item) => item.movie)
-        .slice(0, limit);
+      const watchedMovieIds = new Set((watchHistory as WatchHistoryItem[] || []).map((h) => h.movie_id));
 
-      // Cache the results
-      await OfflineService.cacheData(this.CACHE_KEY, recommendations);
+      // Get user's mood history if no specific mood provided
+      let targetMood = mood;
+      if (!targetMood) {
+        try {
+          const recentMoods = await moodService.getMoodHistory();
+          if (recentMoods.length > 0) {
+            // Use most frequent recent mood
+            const moodCounts: Record<Mood, number> = {
+              happy: 0,
+              sad: 0,
+              excited: 0,
+              relaxed: 0,
+              thoughtful: 0,
+            };
+            recentMoods.forEach((entry) => {
+              moodCounts[entry.mood] = (moodCounts[entry.mood] || 0) + 1;
+            });
+            targetMood = Object.entries(moodCounts).reduce((a, b) =>
+              a[1] > b[1] ? a : b,
+            )[0] as Mood;
+          }
+        } catch (error) {
+          await this.errorHandler.handleError(
+            error instanceof Error ? error : new Error("Failed to get mood history"),
+            {
+              componentName: "RecommendationService",
+              action: "getRecommendations_mood",
+            }
+          );
+          targetMood = "happy"; // Fallback to happy mood
+        }
+      }
 
-      return recommendations;
+      // Get base recommendations from mood
+      const moodBasedMovies = await movieService.getMoodBasedMovies(
+        targetMood || "happy",
+      );
+
+      // Filter and score recommendations
+      const scoredMovies = moodBasedMovies.results
+        .filter((movie) => {
+          if (!preferences.includeWatched && watchedMovieIds.has(movie.id)) {
+            return false;
+          }
+
+          const releaseYear = new Date(movie.release_date).getFullYear();
+          if (
+            preferences.releaseYearStart &&
+            releaseYear < preferences.releaseYearStart
+          ) {
+            return false;
+          }
+          if (
+            preferences.releaseYearEnd &&
+            releaseYear > preferences.releaseYearEnd
+          ) {
+            return false;
+          }
+
+          if (
+            movie.vote_average < preferences.minRating ||
+            movie.vote_average > preferences.maxRating
+          ) {
+            return false;
+          }
+
+          const hasExcludedGenre = movie.genre_ids.some((id) =>
+            preferences.excludedGenres.includes(id),
+          );
+          if (hasExcludedGenre) {
+            return false;
+          }
+
+          return true;
+        })
+        .map((movie) => {
+          // Calculate recommendation score
+          let score = movie.vote_average * 10; // Base score from rating
+
+          // Boost score for preferred genres
+          const genreMatch = movie.genre_ids.filter((id) =>
+            preferences.genres.includes(id),
+          ).length;
+          score += genreMatch * 5;
+
+          // Boost score for recent releases
+          const releaseYear = new Date(movie.release_date).getFullYear();
+          const currentYear = new Date().getFullYear();
+          if (releaseYear >= currentYear - 2) {
+            score += 10;
+          }
+
+          // Generate recommendation reason
+          let reason = "Recommended because ";
+          if (targetMood) {
+            reason += `it matches your ${targetMood} mood`;
+          }
+          if (genreMatch > 0) {
+            reason += `${targetMood ? " and " : ""}it includes genres you like`;
+          }
+          if (!reason.endsWith(".")) {
+            reason += ".";
+          }
+
+          return {
+            movies: [movie],
+            score,
+            reason,
+          };
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, count);
+
+      // Cache recommendations
+      try {
+        await AsyncStorage.setItem(
+          this.CACHE_KEY,
+          JSON.stringify({
+            recommendations: scoredMovies,
+            timestamp: Date.now(),
+          }),
+        );
+      } catch (cacheError) {
+        await this.errorHandler.handleError(
+          new CacheError(
+            "Failed to cache recommendations",
+            this.CACHE_KEY,
+            "write"
+          ),
+          {
+            componentName: "RecommendationService",
+            action: "getRecommendations_cache",
+          }
+        );
+      }
+
+      return scoredMovies;
     } catch (error) {
-      console.error('Error getting personalized recommendations:', error);
-      // Fallback to cached data if available
-      const cached = await OfflineService.getCachedData<TMDBMovie[]>(this.CACHE_KEY);
-      return cached || [];
+      await this.errorHandler.handleError(
+        error instanceof Error ? error : new Error("Failed to get recommendations"),
+        {
+          componentName: "RecommendationService",
+          action: "getRecommendations",
+          additionalInfo: { count, mood },
+        }
+      );
+      throw error;
     }
   }
 
-  private static calculateGenreWeights(
-    watchHistory: TMDBMovie[],
-    favorites: TMDBMovie[]
-  ): GenreWeight[] {
-    const genreCounts = new Map<number, number>();
+  async getPreferences(): Promise<RecommendationPreferences> {
+    try {
+      const cached = await AsyncStorage.getItem(this.PREFERENCES_KEY);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (error) {
+      await this.errorHandler.handleError(
+        new CacheError(
+          "Failed to read recommendation preferences",
+          this.PREFERENCES_KEY,
+          "read"
+        ),
+        {
+          componentName: "RecommendationService",
+          action: "getPreferences",
+        }
+      );
+    }
 
-    // Count genre occurrences in watch history and favorites
-    [...watchHistory, ...favorites].forEach((movie) => {
-      movie.genre_ids.forEach((genreId) => {
-        genreCounts.set(genreId, (genreCounts.get(genreId) || 0) + 1);
-      });
-    });
-
-    // Convert to weights (normalize between 0 and 1)
-    const maxCount = Math.max(...genreCounts.values());
-    return Array.from(genreCounts.entries()).map(([id, count]) => ({
-      id,
-      weight: count / maxCount,
-    }));
-  }
-
-  private static calculateMovieScore(
-    movie: TMDBMovie,
-    genreWeights: GenreWeight[],
-    watchHistory: TMDBMovie[]
-  ): MovieScore {
-    // Calculate genre match score
-    const genreMatch = this.calculateGenreMatch(movie, genreWeights);
-
-    // Calculate mood match score
-    const moodMatch = this.calculateMoodMatch(movie, watchHistory);
-
-    // Normalize rating and popularity
-    const rating = movie.vote_average / 10;
-    const popularity = Math.min(movie.popularity / 100, 1);
-
-    // Calculate final score with weighted factors
-    const score = (
-      genreMatch * 0.4 +
-      moodMatch * 0.3 +
-      rating * 0.2 +
-      popularity * 0.1
-    );
-
+    // Default preferences
     return {
-      movie,
-      score,
-      factors: {
-        genreMatch,
-        moodMatch,
-        rating,
-        popularity,
-      },
+      genres: [],
+      excludedGenres: [],
+      minRating: 6.0,
+      maxRating: 10.0,
+      includeWatched: false,
     };
   }
 
-  private static calculateGenreMatch(
-    movie: TMDBMovie,
-    genreWeights: GenreWeight[]
-  ): number {
-    if (!movie.genre_ids.length) return 0;
+  async updatePreferences(
+    preferences: Partial<RecommendationPreferences>,
+  ): Promise<void> {
+    try {
+      const current = await this.getPreferences();
+      const updated = { ...current, ...preferences };
+      
+      // Save to local storage
+      try {
+        await AsyncStorage.setItem(this.PREFERENCES_KEY, JSON.stringify(updated));
+      } catch (cacheError) {
+        await this.errorHandler.handleError(
+          new CacheError(
+            "Failed to save recommendation preferences",
+            this.PREFERENCES_KEY,
+            "write"
+          ),
+          {
+            componentName: "RecommendationService",
+            action: "updatePreferences_cache",
+          }
+        );
+      }
 
-    const totalWeight = genreWeights.reduce(
-      (sum, weight) => sum + weight.weight,
-      0
-    );
+      // Update in database
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new AuthenticationError("User not authenticated", "auth", "supabase");
 
-    const matchScore = movie.genre_ids.reduce((score, genreId) => {
-      const weight = genreWeights.find((w) => w.id === genreId)?.weight || 0;
-      return score + weight;
-    }, 0);
+      const { error: dbError } = await supabase
+        .from("profiles")
+        .update({ recommendation_preferences: updated })
+        .eq("id", user.id);
 
-    return matchScore / totalWeight;
+      if (dbError) {
+        throw new DatabaseError(
+          "Failed to update recommendation preferences",
+          "update",
+          "profiles",
+          dbError
+        );
+      }
+
+      // Clear recommendations cache to force refresh with new preferences
+      try {
+        await AsyncStorage.removeItem(this.CACHE_KEY);
+      } catch (cacheError) {
+        await this.errorHandler.handleError(
+          new CacheError(
+            "Failed to clear recommendations cache",
+            this.CACHE_KEY,
+            "delete"
+          ),
+          {
+            componentName: "RecommendationService",
+            action: "updatePreferences_clearCache",
+          }
+        );
+      }
+    } catch (error) {
+      await this.errorHandler.handleError(
+        error instanceof Error ? error : new Error("Failed to update preferences"),
+        {
+          componentName: "RecommendationService",
+          action: "updatePreferences",
+          additionalInfo: { preferences },
+        }
+      );
+      throw error;
+    }
   }
+}
 
-  private static calculateMoodMatch(
-    movie: TMDBMovie,
-    watchHistory: TMDBMovie[]
-  ): number {
-    if (!watchHistory.length) return 0.5; // Default score if no history
-
-    // Get mood patterns from watch history
-    const moodPatterns = MoodService.analyzeMoodPatterns(watchHistory);
-
-    // Calculate mood match based on movie characteristics
-    const moodMatch = MoodService.calculateMoodMatch(movie, moodPatterns);
-
-    return moodMatch;
-  }
-} 
+export const recommendationService = new RecommendationService();

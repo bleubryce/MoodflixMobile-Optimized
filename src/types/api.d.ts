@@ -1,6 +1,6 @@
-import { Movie } from './movie';
-import { User } from './auth';
-import { WatchParty } from './watchParty';
+import { Movie } from "./movie";
+import { User } from "./auth";
+import { WatchParty } from "./watchParty";
 
 export interface ApiResponse<T> {
   data: T;
@@ -60,4 +60,4 @@ export interface TMDBResponse<T> {
   total_results: number;
 }
 
-export interface TMDBMovieResponse extends TMDBResponse<TMDBMovie> {} 
+export interface TMDBMovieResponse extends TMDBResponse<TMDBMovie> {}

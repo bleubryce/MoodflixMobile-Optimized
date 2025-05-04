@@ -9,4 +9,4 @@ export interface NotificationPreferences {
 export interface NotificationService {
   getPreferences: () => Promise<NotificationPreferences>;
   updatePreferences: (preferences: NotificationPreferences) => Promise<void>;
-} 
+}

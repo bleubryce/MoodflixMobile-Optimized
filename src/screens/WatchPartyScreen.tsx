@@ -1,11 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, Button, TextInput, Avatar, Card, IconButton, useTheme } from 'react-native-paper';
-import { Video, ResizeMode } from 'expo-av';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { WatchPartyService } from '../services/watchPartyService';
-import { useSocial } from '../contexts/SocialContext';
-import { FlatList } from 'react-native-gesture-handler';
+import { useSocial } from "@contexts/SocialContext";
+import { useRoute, useNavigation } from "@react-navigation/native";
+import { WatchPartyService } from "@services/watchPartyService";
+import { Video, ResizeMode } from "expo-av";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
+import { FlatList } from "react-native-gesture-handler";
+import {
+  Text,
+  Button,
+  TextInput,
+  Avatar,
+  Card,
+  IconButton,
+  useTheme,
+} from "react-native-paper";
 
 export const WatchPartyScreen: React.FC = () => {
   const route = useRoute();
@@ -15,7 +29,7 @@ export const WatchPartyScreen: React.FC = () => {
   const { friends, createActivity } = useSocial();
 
   const [party, setParty] = useState(null);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -45,17 +59,19 @@ export const WatchPartyScreen: React.FC = () => {
       setParty(partyData);
       setParticipants(partyData.participants);
       setChatMessages(partyData.chatMessages || []);
-      
+
       // Create activity for joining watch party
       await createActivity(
-        'watch',
+        "watch",
         `joined a watch party for ${partyData.movie.title}`,
         partyData.movieId.toString(),
-        'movie'
+        "movie",
       );
     } catch (err) {
-      console.error('Error loading watch party:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load watch party');
+      console.error("Error loading watch party:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to load watch party",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -68,7 +84,7 @@ export const WatchPartyScreen: React.FC = () => {
         setParty(updatedParty);
         setParticipants(updatedParty.participants);
         setChatMessages(updatedParty.chatMessages || []);
-        
+
         // Sync video playback state
         if (videoRef.current) {
           if (updatedParty.isPlaying !== isPlaying) {
@@ -79,17 +95,20 @@ export const WatchPartyScreen: React.FC = () => {
             }
             setIsPlaying(updatedParty.isPlaying);
           }
-          
+
           // Sync video position if it's more than 3 seconds off
-          videoRef.current.getStatusAsync().then(status => {
-            if (status.isLoaded && Math.abs(status.positionMillis - updatedParty.currentTime) > 3000) {
+          videoRef.current.getStatusAsync().then((status) => {
+            if (
+              status.isLoaded &&
+              Math.abs(status.positionMillis - updatedParty.currentTime) > 3000
+            ) {
               videoRef.current.setPositionAsync(updatedParty.currentTime);
             }
           });
         }
       });
     } catch (err) {
-      console.error('Error setting up real-time subscription:', err);
+      console.error("Error setting up real-time subscription:", err);
     }
   };
 
@@ -97,7 +116,7 @@ export const WatchPartyScreen: React.FC = () => {
     try {
       await watchPartyService.leaveWatchParty();
     } catch (err) {
-      console.error('Error leaving watch party:', err);
+      console.error("Error leaving watch party:", err);
     }
   };
 
@@ -107,19 +126,22 @@ export const WatchPartyScreen: React.FC = () => {
     try {
       const newIsPlaying = !isPlaying;
       setIsPlaying(newIsPlaying);
-      
+
       if (newIsPlaying) {
         await videoRef.current.playAsync();
       } else {
         await videoRef.current.pauseAsync();
       }
-      
+
       const status = await videoRef.current.getStatusAsync();
       if (status.isLoaded) {
-        await watchPartyService.updatePlaybackState(newIsPlaying, status.positionMillis);
+        await watchPartyService.updatePlaybackState(
+          newIsPlaying,
+          status.positionMillis,
+        );
       }
     } catch (err) {
-      console.error('Error updating playback state:', err);
+      console.error("Error updating playback state:", err);
     }
   };
 
@@ -130,7 +152,7 @@ export const WatchPartyScreen: React.FC = () => {
       await videoRef.current.setPositionAsync(position);
       await watchPartyService.updatePlaybackState(isPlaying, position);
     } catch (err) {
-      console.error('Error seeking:', err);
+      console.error("Error seeking:", err);
     }
   };
 
@@ -139,14 +161,14 @@ export const WatchPartyScreen: React.FC = () => {
 
     try {
       await watchPartyService.sendChatMessage(message);
-      setMessage('');
-      
+      setMessage("");
+
       // Scroll to bottom of chat
       if (chatScrollRef.current) {
         chatScrollRef.current.scrollToEnd({ animated: true });
       }
     } catch (err) {
-      console.error('Error sending message:', err);
+      console.error("Error sending message:", err);
     }
   };
 
@@ -155,7 +177,7 @@ export const WatchPartyScreen: React.FC = () => {
       await watchPartyService.inviteToWatchParty(partyId, friendId);
       setInviteDialogVisible(false);
     } catch (err) {
-      console.error('Error inviting friend:', err);
+      console.error("Error inviting friend:", err);
     }
   };
 
@@ -182,7 +204,11 @@ export const WatchPartyScreen: React.FC = () => {
     return (
       <View style={[styles.container, styles.centerContent]}>
         <Text>Watch party not found</Text>
-        <Button mode="contained" onPress={() => navigation.goBack()} style={styles.retryButton}>
+        <Button
+          mode="contained"
+          onPress={() => navigation.goBack()}
+          style={styles.retryButton}
+        >
           Go Back
         </Button>
       </View>
@@ -192,8 +218,8 @@ export const WatchPartyScreen: React.FC = () => {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
     >
       <View style={styles.header}>
         <Text style={styles.title}>{party.movie.title}</Text>
@@ -215,20 +241,27 @@ export const WatchPartyScreen: React.FC = () => {
         <Video
           ref={videoRef}
           style={styles.video}
-          source={{ uri: party.movie.videoUrl || `https://example.com/videos/${party.movieId}.mp4` }}
+          source={{
+            uri:
+              party.movie.videoUrl ||
+              `https://example.com/videos/${party.movieId}.mp4`,
+          }}
           useNativeControls={false}
           resizeMode={ResizeMode.CONTAIN}
           shouldPlay={isPlaying}
           onPlaybackStatusUpdate={(status) => {
             if (status.isLoaded && status.didJustFinish) {
               setIsPlaying(false);
-              watchPartyService.updatePlaybackState(false, status.positionMillis);
+              watchPartyService.updatePlaybackState(
+                false,
+                status.positionMillis,
+              );
             }
           }}
         />
         <View style={styles.videoControls}>
           <IconButton
-            icon={isPlaying ? 'pause' : 'play'}
+            icon={isPlaying ? "pause" : "play"}
             size={36}
             onPress={handlePlayPause}
           />
@@ -255,7 +288,7 @@ export const WatchPartyScreen: React.FC = () => {
                       source={
                         item.avatarUrl
                           ? { uri: item.avatarUrl }
-                          : require('../../assets/default-avatar.png')
+                          : require("../../assets/default-avatar.png")
                       }
                     />
                     <View style={styles.participantInfo}>
@@ -279,19 +312,19 @@ export const WatchPartyScreen: React.FC = () => {
                   key={msg.id}
                   style={[
                     styles.chatBubble,
-                    msg.type === 'system'
+                    msg.type === "system"
                       ? styles.systemMessage
                       : styles.userMessage,
                   ]}
                 >
-                  {msg.type !== 'system' && (
+                  {msg.type !== "system" && (
                     <Text style={styles.messageUsername}>{msg.username}</Text>
                   )}
                   <Text style={styles.messageContent}>{msg.content}</Text>
                   <Text style={styles.messageTime}>
                     {new Date(msg.timestamp).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
+                      hour: "2-digit",
+                      minute: "2-digit",
                     })}
                   </Text>
                 </View>
@@ -331,7 +364,7 @@ export const WatchPartyScreen: React.FC = () => {
                       source={
                         item.avatar
                           ? { uri: item.avatar }
-                          : require('../../assets/default-avatar.png')
+                          : require("../../assets/default-avatar.png")
                       }
                     />
                     <Text style={styles.friendName}>{item.name}</Text>
@@ -346,7 +379,9 @@ export const WatchPartyScreen: React.FC = () => {
               />
             </Card.Content>
             <Card.Actions>
-              <Button onPress={() => setInviteDialogVisible(false)}>Close</Button>
+              <Button onPress={() => setInviteDialogVisible(false)}>
+                Close
+              </Button>
             </Card.Actions>
           </Card>
         </View>
@@ -358,46 +393,46 @@ export const WatchPartyScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
   },
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     flex: 1,
   },
   headerButtons: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   videoContainer: {
     aspectRatio: 16 / 9,
-    backgroundColor: '#000',
-    position: 'relative',
+    backgroundColor: "#000",
+    position: "relative",
   },
   video: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   videoControls: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     padding: 8,
   },
   contentContainer: {
@@ -406,7 +441,7 @@ const styles = StyleSheet.create({
   chatContainer: {
     flex: 1,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: "#e0e0e0",
   },
   chatMessages: {
     flex: 1,
@@ -418,19 +453,19 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 16,
     marginBottom: 8,
-    maxWidth: '80%',
+    maxWidth: "80%",
   },
   userMessage: {
-    backgroundColor: '#e1f5fe',
-    alignSelf: 'flex-start',
+    backgroundColor: "#e1f5fe",
+    alignSelf: "flex-start",
   },
   systemMessage: {
-    backgroundColor: '#f5f5f5',
-    alignSelf: 'center',
+    backgroundColor: "#f5f5f5",
+    alignSelf: "center",
     borderRadius: 8,
   },
   messageUsername: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
   },
   messageContent: {
@@ -438,16 +473,16 @@ const styles = StyleSheet.create({
   },
   messageTime: {
     fontSize: 12,
-    color: '#757575',
-    alignSelf: 'flex-end',
+    color: "#757575",
+    alignSelf: "flex-end",
     marginTop: 4,
   },
   chatInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 8,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: "#e0e0e0",
   },
   chatInput: {
     flex: 1,
@@ -457,8 +492,8 @@ const styles = StyleSheet.create({
     margin: 16,
   },
   participantItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
   },
   participantInfo: {
@@ -466,22 +501,22 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    color: '#757575',
+    color: "#757575",
   },
   inviteDialog: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
     padding: 16,
   },
   friendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 12,
   },
   friendName: {
@@ -489,7 +524,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   errorText: {
-    color: 'red',
+    color: "red",
     marginBottom: 16,
   },
   retryButton: {

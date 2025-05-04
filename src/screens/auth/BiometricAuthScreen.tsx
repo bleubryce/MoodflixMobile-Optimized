@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Button, Text, ActivityIndicator } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import { BiometricService } from '../../services/biometricService';
-import { useAuth } from '../../contexts/auth/AuthContext';
-import { RootStackParamList } from '../../navigation/types';
+import { useAuth } from "@contexts/auth/AuthContext";
+import { RootStackParamList } from "@navigation/types";
+import { useNavigation } from "@react-navigation/native";
+import { StackNavigationProp } from "@react-navigation/stack";
+import { BiometricService } from "@services/biometricService";
+import React, { useEffect, useState } from "react";
+import { View, StyleSheet } from "react-native";
+import { Button, Text, ActivityIndicator } from "react-native-paper";
 
-type NavigationProp = StackNavigationProp<RootStackParamList, 'BiometricAuth'>;
+type NavigationProp = StackNavigationProp<RootStackParamList, "BiometricAuth">;
 
 export const BiometricAuthScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -25,14 +25,14 @@ export const BiometricAuthScreen: React.FC = () => {
       const isEnabled = await BiometricService.isBiometricEnabled();
 
       if (!isAvailable || !isEnabled) {
-        navigation.navigate('Login');
+        navigation.navigate("Login");
         return;
       }
 
       await handleBiometricAuth();
     } catch (error) {
-      setError('Failed to check biometric status');
-      console.error('Error checking biometric status:', error);
+      setError("Failed to check biometric status");
+      console.error("Error checking biometric status:", error);
     } finally {
       setIsLoading(false);
     }
@@ -44,21 +44,21 @@ export const BiometricAuthScreen: React.FC = () => {
       if (result.success) {
         const token = await BiometricService.getAuthToken();
         if (token) {
-          await signIn(token, 'biometric');
+          await signIn(token, "biometric");
         } else {
-          navigation.navigate('Login');
+          navigation.navigate("Login");
         }
       } else {
-        setError(result.error || 'Authentication failed');
+        setError(result.error || "Authentication failed");
       }
     } catch (error) {
-      setError('An unexpected error occurred');
-      console.error('Error during biometric authentication:', error);
+      setError("An unexpected error occurred");
+      console.error("Error during biometric authentication:", error);
     }
   };
 
   const handleUsePassword = () => {
-    navigation.navigate('Login');
+    navigation.navigate("Login");
   };
 
   if (isLoading) {
@@ -73,7 +73,9 @@ export const BiometricAuthScreen: React.FC = () => {
     <View style={styles.container}>
       {error && <Text style={styles.error}>{error}</Text>}
       <Text style={styles.title}>Welcome to MoodFlix</Text>
-      <Text style={styles.subtitle}>Use biometric authentication to sign in</Text>
+      <Text style={styles.subtitle}>
+        Use biometric authentication to sign in
+      </Text>
       <Button
         mode="contained"
         onPress={handleBiometricAuth}
@@ -97,19 +99,19 @@ export const BiometricAuthScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
     marginBottom: 32,
   },
   button: {
@@ -117,8 +119,8 @@ const styles = StyleSheet.create({
     minWidth: 200,
   },
   error: {
-    color: 'red',
+    color: "red",
     marginBottom: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
-}); 
+});

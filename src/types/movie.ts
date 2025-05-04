@@ -13,4 +13,4 @@ export interface Movie {
   original_title: string;
   adult: boolean;
   video: boolean;
-} 
+}

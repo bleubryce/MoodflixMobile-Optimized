@@ -1,19 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Dimensions, Image } from 'react-native';
-import { Text, Button, Chip, useTheme, ActivityIndicator } from 'react-native-paper';
-import { useAuth } from '../contexts/AuthContext';
-import { TMDBMovieDetails } from '../types/tmdb';
-import { getMovieDetails } from '../services/movieService';
+import { useAuth } from "@contexts/AuthContext";
+import { getMovieDetails } from "@services/movieService";
+import { TMDBMovieDetails } from "@types/tmdb";
+import React, { useState, useEffect } from "react";
+import { View, StyleSheet, ScrollView, Dimensions, Image } from "react-native";
+import {
+  Text,
+  Button,
+  Chip,
+  useTheme,
+  ActivityIndicator,
+} from "react-native-paper";
 
-type Mood = 'Happy' | 'Sad' | 'Excited' | 'Relaxed' | 'Romantic';
+type Mood = "Happy" | "Sad" | "Excited" | "Relaxed" | "Romantic";
 
-const moods: Mood[] = ['Happy', 'Sad', 'Excited', 'Relaxed', 'Romantic'];
+const moods: Mood[] = ["Happy", "Sad", "Excited", "Relaxed", "Romantic"];
 
 export default function MovieDetailScreen({ route, navigation }: any) {
   const { movieId } = route.params;
   const [movie, setMovie] = useState<TMDBMovieDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedMood, setSelectedMood] = useState<Mood | ''>('');
+  const [selectedMood, setSelectedMood] = useState<Mood | "">("");
   const { user } = useAuth();
   const theme = useTheme();
   const [error, setError] = useState<string | null>(null);
@@ -28,10 +34,10 @@ export default function MovieDetailScreen({ route, navigation }: any) {
       if (response.data) {
         setMovie(response.data);
       } else {
-        setError('Movie not found');
+        setError("Movie not found");
       }
     } catch (err) {
-      setError('Failed to fetch movie details');
+      setError("Failed to fetch movie details");
     } finally {
       setLoading(false);
     }
@@ -53,15 +59,17 @@ export default function MovieDetailScreen({ route, navigation }: any) {
   return (
     <ScrollView style={styles.container}>
       <Image
-        source={{ uri: `https://image.tmdb.org/t/p/w500${movie.backdrop_path}` }}
+        source={{
+          uri: `https://image.tmdb.org/t/p/w500${movie.backdrop_path}`,
+        }}
         style={styles.backdrop}
       />
-      
+
       <View style={styles.content}>
         <Text variant="headlineMedium" style={styles.title}>
           {movie.title}
         </Text>
-        
+
         <View style={styles.ratingContainer}>
           <Text variant="bodyLarge" style={styles.rating}>
             Rating: {movie.vote_average}/10
@@ -70,7 +78,7 @@ export default function MovieDetailScreen({ route, navigation }: any) {
             Release: {movie.release_date}
           </Text>
         </View>
-        
+
         <View style={styles.genresContainer}>
           {movie.genres.map((genre) => (
             <Chip key={genre.id} style={styles.genreChip}>
@@ -78,15 +86,15 @@ export default function MovieDetailScreen({ route, navigation }: any) {
             </Chip>
           ))}
         </View>
-        
+
         <Text variant="bodyLarge" style={styles.overview}>
           {movie.overview}
         </Text>
-        
+
         <Text variant="titleMedium" style={styles.moodTitle}>
           How does this movie make you feel?
         </Text>
-        
+
         <View style={styles.moodsContainer}>
           {moods.map((mood) => (
             <Chip
@@ -99,7 +107,7 @@ export default function MovieDetailScreen({ route, navigation }: any) {
             </Chip>
           ))}
         </View>
-        
+
         <Button
           mode="contained"
           onPress={() => {
@@ -116,34 +124,34 @@ export default function MovieDetailScreen({ route, navigation }: any) {
   );
 }
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   backdrop: {
     height: 200,
-    width: '100%',
+    width: "100%",
   },
   content: {
     padding: 16,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 8,
   },
   ratingContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 16,
   },
   genresContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginBottom: 16,
   },
   genreChip: {
@@ -166,8 +174,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   moodsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginBottom: 24,
   },
   moodChip: {
@@ -178,8 +186,8 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   loadingContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
-}); 
+});

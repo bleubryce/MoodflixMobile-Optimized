@@ -1,15 +1,19 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { NotificationPreferences } from '../../types/notifications';
-import { NotificationService } from '../../services/notificationService';
+import { NotificationService } from "@services/notificationService";
+import { NotificationPreferences } from "@types/notifications";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 interface NotificationContextType {
   preferences: NotificationPreferences;
   updatePreferences: (preferences: NotificationPreferences) => Promise<void>;
 }
 
-const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+const NotificationContext = createContext<NotificationContextType | undefined>(
+  undefined,
+);
 
-export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [preferences, setPreferences] = useState<NotificationPreferences>({
     movieRecommendations: true,
     moodSuggestions: true,
@@ -41,7 +45,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 export const useNotifications = () => {
   const context = useContext(NotificationContext);
   if (context === undefined) {
-    throw new Error('useNotifications must be used within a NotificationProvider');
+    throw new Error(
+      "useNotifications must be used within a NotificationProvider",
+    );
   }
   return context;
-}; 
+};

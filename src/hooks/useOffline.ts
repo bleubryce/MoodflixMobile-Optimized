@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
-import { useNetInfo } from '@react-native-community/netinfo';
-import { offlineService } from '../services/offlineService';
-import { OfflineState } from '../types/offline';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { OfflineService } from '../services/offlineService';
-import { Movie } from '../types/movie';
+import { useNetInfo } from "@react-native-community/netinfo";
+import { offlineService } from "@services/offlineService";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Movie } from "@types/movie";
+import { OfflineState } from "@types/offline";
+import { useState, useEffect } from "react";
 
 export const useOffline = () => {
   const netInfo = useNetInfo();
@@ -16,41 +15,45 @@ export const useOffline = () => {
 
   useEffect(() => {
     const loadOfflineState = async () => {
-      const state = await offlineService.getOfflineState();
-      setOfflineState(state);
+      const isConnected = await offlineService.isConnected();
+      setOfflineState((prev) => ({ ...prev, isConnected }));
     };
 
     loadOfflineState();
-  }, []);
+    return () => {
+      // Cleanup if needed
+    };
+  }, [offlineService]);
 
   useEffect(() => {
     const updateConnectionState = async () => {
       const isConnected = netInfo.isConnected ?? true;
-      await offlineService.updateOfflineState({ isConnected });
-      setOfflineState(prev => ({ ...prev, isConnected }));
+      setOfflineState((prev) => ({ ...prev, isConnected }));
     };
 
     updateConnectionState();
+    return () => {
+      // Cleanup if needed
+    };
   }, [netInfo.isConnected]);
 
   const updateLastSync = async (timestamp: string) => {
-    await offlineService.updateOfflineState({ lastSync: timestamp });
-    setOfflineState(prev => ({ ...prev, lastSync: timestamp }));
+    setOfflineState((prev) => ({ ...prev, lastSync: new Date(timestamp) }));
   };
 
   const clearCache = async () => {
     await offlineService.clearCache();
-    setOfflineState(prev => ({
+    setOfflineState((prev) => ({
       ...prev,
       cacheSize: 0,
       lastSync: null,
     }));
   };
 
-  const _queryClient = useQueryClient();
+  const queryClient = useQueryClient();
   const { data: isOffline } = useQuery({
-    queryKey: ['offline'],
-    queryFn: () => OfflineService.isOffline(),
+    queryKey: ["offline"],
+    queryFn: () => offlineService.isConnected().then((connected) => !connected),
     initialData: false,
   });
 
@@ -81,7 +84,7 @@ export function useOfflineData<T>({
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const unsubscribe = OfflineService.subscribeToNetworkChanges(setIsOnline);
+    const unsubscribe = offlineService.subscribeToNetworkChanges(setIsOnline);
     return () => unsubscribe();
   }, []);
 
@@ -91,12 +94,12 @@ export function useOfflineData<T>({
       try {
         const result = await fetchFn();
         // Cache the result
-        await OfflineService.cacheMovies(result as unknown as Movie[]);
+        await offlineService.cacheMovies(result as unknown as Movie[]);
         return result;
       } catch (err) {
         // If offline, try to get cached data
         if (!isOnline) {
-          const cached = await OfflineService.getCachedMovies();
+          const cached = await offlineService.getCachedMovies();
           if (cached.length > 0) {
             return cached as unknown as T;
           }
@@ -115,4 +118,4 @@ export function useOfflineData<T>({
     error,
     isOnline,
   };
-} 
+}

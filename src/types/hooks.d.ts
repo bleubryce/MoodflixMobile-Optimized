@@ -1,8 +1,8 @@
-import { Movie } from './movie';
-import { User } from './auth';
-import { NotificationPreferences } from './notifications';
-import { OfflineState } from './offline';
-import { WatchParty } from './watchParty';
+import { Movie } from "./movie";
+import { User } from "./auth";
+import { NotificationPreferences } from "./notifications";
+import { OfflineState } from "./offline";
+import { WatchParty } from "./watchParty";
 
 export interface UseMoviesResult {
   movies: Movie[];
@@ -50,27 +50,30 @@ export interface UseWatchPartyResult {
   leaveParty: (partyId: string) => Promise<void>;
   updatePartyStatus: (status: string) => Promise<void>;
   sendChatMessage: (message: string) => Promise<void>;
-  updatePlaybackStatus: (currentTime: number, isPlaying: boolean) => Promise<void>;
+  updatePlaybackStatus: (
+    currentTime: number,
+    isPlaying: boolean,
+  ) => Promise<void>;
   inviteUser: (userId: string) => Promise<void>;
   removeUser: (userId: string) => Promise<void>;
 }
 
-declare module 'src/hooks/useMovies' {
+declare module "src/hooks/useMovies" {
   export const useMovies: () => UseMoviesResult;
 }
 
-declare module 'src/hooks/useAuth' {
+declare module "src/hooks/useAuth" {
   export const useAuth: () => UseAuthResult;
 }
 
-declare module 'src/hooks/useNotifications' {
+declare module "src/hooks/useNotifications" {
   export const useNotifications: () => UseNotificationsResult;
 }
 
-declare module 'src/hooks/useOffline' {
+declare module "src/hooks/useOffline" {
   export const useOffline: () => UseOfflineResult;
 }
 
-declare module 'src/hooks/useWatchParty' {
+declare module "src/hooks/useWatchParty" {
   export const useWatchParty: (partyId?: string) => UseWatchPartyResult;
-} 
+}

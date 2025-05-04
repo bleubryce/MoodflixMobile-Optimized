@@ -1,42 +1,39 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-import { TextInput, Button, Text, HelperText } from 'react-native-paper';
-import { useAuth } from '../../contexts/auth/AuthContext';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-
-type AuthStackParamList = {
-  Login: undefined;
-  Register: undefined;
-  ForgotPassword: undefined;
-};
-
-type RegisterScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Register'>;
+import { useAuth } from "@contexts/auth/AuthContext";
+import { useNavigation } from "@react-navigation/native";
+import { AuthStackNavigationProp } from "@types/navigation";
+import React, { useState } from "react";
+import { View, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import { TextInput, Button, Text, HelperText } from "react-native-paper";
 
 export const RegisterScreen: React.FC = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const { signUp } = useAuth();
-  const navigation = useNavigation<RegisterScreenNavigationProp>();
+  const navigation = useNavigation<AuthStackNavigationProp>();
 
   const validateForm = () => {
     if (!name || !email || !password || !confirmPassword) {
-      setError('Please fill in all fields');
+      setError("Please fill in all fields");
       return false;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return false;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError("Password must be at least 6 characters");
+      return false;
+    }
+
+    if (!email.includes("@")) {
+      setError("Please enter a valid email address");
       return false;
     }
 
@@ -51,9 +48,9 @@ export const RegisterScreen: React.FC = () => {
 
     try {
       await signUp(email, password, name);
-      navigation.navigate('Login');
+      navigation.navigate("Login");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to register');
+      setError(err instanceof Error ? err.message : "Failed to register");
     } finally {
       setLoading(false);
     }
@@ -61,18 +58,20 @@ export const RegisterScreen: React.FC = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
       <View style={styles.content}>
         <Text style={styles.title}>Create Account</Text>
-        
+
         <TextInput
           label="Name"
           value={name}
           onChangeText={setName}
           style={styles.input}
           disabled={loading}
+          testID="name-input"
+          autoCapitalize="words"
         />
 
         <TextInput
@@ -83,6 +82,7 @@ export const RegisterScreen: React.FC = () => {
           keyboardType="email-address"
           style={styles.input}
           disabled={loading}
+          testID="email-input"
         />
 
         <TextInput
@@ -92,6 +92,7 @@ export const RegisterScreen: React.FC = () => {
           secureTextEntry
           style={styles.input}
           disabled={loading}
+          testID="password-input"
         />
 
         <TextInput
@@ -101,10 +102,11 @@ export const RegisterScreen: React.FC = () => {
           secureTextEntry
           style={styles.input}
           disabled={loading}
+          testID="confirm-password-input"
         />
 
         {error && (
-          <HelperText type="error" visible={!!error}>
+          <HelperText type="error" visible={!!error} testID="error-text">
             {error}
           </HelperText>
         )}
@@ -115,15 +117,17 @@ export const RegisterScreen: React.FC = () => {
           loading={loading}
           disabled={loading}
           style={styles.button}
+          testID="register-button"
         >
           Create Account
         </Button>
 
         <Button
           mode="text"
-          onPress={() => navigation.navigate('Login')}
+          onPress={() => navigation.navigate("Login")}
           disabled={loading}
           style={styles.button}
+          testID="login-button"
         >
           Already have an account? Sign in
         </Button>
@@ -135,17 +139,17 @@ export const RegisterScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   content: {
     flex: 1,
     padding: 20,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 30,
   },
   input: {
@@ -154,4 +158,4 @@ const styles = StyleSheet.create({
   button: {
     marginTop: 8,
   },
-}); 
+});

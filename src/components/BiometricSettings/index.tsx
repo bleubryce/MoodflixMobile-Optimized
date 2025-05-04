@@ -1,8 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { List, Switch, Text, ActivityIndicator } from 'react-native-paper';
-import { BiometricService } from '../../services/biometricService';
-import { useTheme } from 'react-native-paper';
+import { BiometricService } from "@services/biometricService";
+import React, { useEffect, useState } from "react";
+import { View, StyleSheet } from "react-native";
+import {
+  List,
+  Switch,
+  Text,
+  ActivityIndicator,
+  useTheme,
+} from "react-native-paper";
 
 export const BiometricSettings: React.FC = () => {
   const [isAvailable, setIsAvailable] = useState<boolean>(false);
@@ -22,8 +27,8 @@ export const BiometricSettings: React.FC = () => {
       setIsAvailable(available);
       setIsEnabled(enabled);
     } catch (error) {
-      setError('Failed to check biometric status');
-      console.error('Error checking biometric status:', error);
+      setError("Failed to check biometric status");
+      console.error("Error checking biometric status:", error);
     } finally {
       setIsLoading(false);
     }
@@ -41,12 +46,12 @@ export const BiometricSettings: React.FC = () => {
           await BiometricService.enableBiometric();
           setIsEnabled(true);
         } else {
-          setError(result.error || 'Authentication failed');
+          setError(result.error || "Authentication failed");
         }
       }
     } catch (error) {
-      setError('Failed to update biometric settings');
-      console.error('Error toggling biometric:', error);
+      setError("Failed to update biometric settings");
+      console.error("Error toggling biometric:", error);
     } finally {
       setIsLoading(false);
     }
@@ -92,15 +97,15 @@ export const BiometricSettings: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   listItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   error: {
-    color: 'red',
+    color: "red",
     marginBottom: 16,
   },
-}); 
+});

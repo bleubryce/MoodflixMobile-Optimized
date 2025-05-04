@@ -1,32 +1,35 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-import { TextInput, Button, Text, HelperText } from 'react-native-paper';
-import { useAuth } from '../../contexts/auth/AuthContext';
-import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-
-type AuthStackParamList = {
-  Login: undefined;
-  Register: undefined;
-  ForgotPassword: undefined;
-};
-
-type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
+import { useAuth } from "@contexts/auth/AuthContext";
+import { useNavigation } from "@react-navigation/native";
+import { AuthStackNavigationProp } from "@types/navigation";
+import React, { useState } from "react";
+import { View, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import { TextInput, Button, Text, HelperText } from "react-native-paper";
 
 export const LoginScreen: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const { signIn } = useAuth();
-  const navigation = useNavigation<LoginScreenNavigationProp>();
+  const navigation = useNavigation<AuthStackNavigationProp>();
+
+  const validateForm = () => {
+    if (!email || !password) {
+      setError("Please fill in all fields");
+      return false;
+    }
+
+    if (!email.includes("@")) {
+      setError("Please enter a valid email address");
+      return false;
+    }
+
+    return true;
+  };
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      setError('Please fill in all fields');
-      return;
-    }
+    if (!validateForm()) return;
 
     setLoading(true);
     setError(null);
@@ -34,7 +37,7 @@ export const LoginScreen: React.FC = () => {
     try {
       await signIn(email, password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sign in');
+      setError(err instanceof Error ? err.message : "Failed to sign in");
     } finally {
       setLoading(false);
     }
@@ -42,12 +45,12 @@ export const LoginScreen: React.FC = () => {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={styles.container}
     >
       <View style={styles.content}>
         <Text style={styles.title}>Welcome to MoodFlix</Text>
-        
+
         <TextInput
           label="Email"
           value={email}
@@ -56,6 +59,7 @@ export const LoginScreen: React.FC = () => {
           keyboardType="email-address"
           style={styles.input}
           disabled={loading}
+          testID="email-input"
         />
 
         <TextInput
@@ -65,10 +69,11 @@ export const LoginScreen: React.FC = () => {
           secureTextEntry
           style={styles.input}
           disabled={loading}
+          testID="password-input"
         />
 
         {error && (
-          <HelperText type="error" visible={!!error}>
+          <HelperText type="error" visible={!!error} testID="error-text">
             {error}
           </HelperText>
         )}
@@ -79,24 +84,27 @@ export const LoginScreen: React.FC = () => {
           loading={loading}
           disabled={loading}
           style={styles.button}
+          testID="login-button"
         >
           Sign In
         </Button>
 
         <Button
           mode="text"
-          onPress={() => navigation.navigate('Register')}
+          onPress={() => navigation.navigate("Register")}
           disabled={loading}
           style={styles.button}
+          testID="register-button"
         >
           Create Account
         </Button>
 
         <Button
           mode="text"
-          onPress={() => navigation.navigate('ForgotPassword')}
+          onPress={() => navigation.navigate("ForgotPassword")}
           disabled={loading}
           style={styles.button}
+          testID="forgot-password-button"
         >
           Forgot Password?
         </Button>
@@ -108,17 +116,17 @@ export const LoginScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   content: {
     flex: 1,
     padding: 20,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 30,
   },
   input: {
@@ -127,4 +135,4 @@ const styles = StyleSheet.create({
   button: {
     marginTop: 8,
   },
-}); 
+});

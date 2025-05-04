@@ -15,9 +15,9 @@ export interface TMDBMovie {
   video: boolean;
 }
 
-export interface TMDBMovieDetails extends Omit<TMDBMovie, 'genre_ids'> {
+export interface TMDBMovieDetails extends Omit<TMDBMovie, "genre_ids"> {
   genres: { id: number; name: string }[];
   runtime: number;
   tagline: string;
   status: string;
-} 
+}

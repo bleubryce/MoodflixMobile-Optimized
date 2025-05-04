@@ -1,11 +1,39 @@
+export type ActivityType = 'watch' | 'rate' | 'recommend' | 'friend' | 'mood';
+
+export interface ActivityData {
+  movie?: {
+    id: number;
+    title: string;
+  };
+  mood?: {
+    id: number;
+    name: string;
+  };
+  rating?: number;
+  friend_id?: string;
+  watch_party_id?: string;
+  message?: string;
+}
+
 export interface ActivityItem {
   id: string;
-  type: 'watch' | 'rate' | 'recommend' | 'friend' | 'mood';
+  type: ActivityType;
   username: string;
-  avatarUrl?: string;
   content: string;
-  resourceId?: string;
-  resourceType?: 'movie' | 'user' | 'mood';
   timestamp: string;
-  isPrivate?: boolean;
+  resourceId?: string;
+  avatarUrl?: string;
+  data?: ActivityData;
+}
+
+export interface ActivityFeed {
+  items: ActivityItem[];
+  hasMore: boolean;
+  lastTimestamp: string | null;
+}
+
+export interface ActivityServiceResponse {
+  items: ActivityItem[];
+  hasMore: boolean;
+  lastTimestamp: string | null;
 } 

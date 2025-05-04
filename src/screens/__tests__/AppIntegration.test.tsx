@@ -1,13 +1,14 @@
-import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { ThemeProvider } from '../contexts/ThemeContext';
-import { AuthProvider } from '../contexts/AuthContext';
-import { OfflineService } from '../services/offlineService';
-import App from '../../App';
+import { NavigationContainer } from "@react-navigation/native";
+import { render, fireEvent, waitFor } from "@testing-library/react-native";
+import React from "react";
+
+import App from "../../App";
+import { AuthProvider } from "../contexts/AuthContext";
+import { ThemeProvider } from "../contexts/ThemeContext";
+import { OfflineService } from "../services/offlineService";
 
 // Mock all the necessary services
-jest.mock('../services/offlineService', () => ({
+jest.mock("../services/offlineService", () => ({
   OfflineService: {
     getInstance: () => ({
       subscribeToNetworkChanges: jest.fn().mockReturnValue(() => {}),
@@ -19,36 +20,36 @@ jest.mock('../services/offlineService', () => ({
   },
 }));
 
-jest.mock('../services/movieService', () => ({
+jest.mock("../services/movieService", () => ({
   getMovieDetails: jest.fn().mockResolvedValue({
     data: {
       id: 123,
-      title: 'Test Movie',
-      overview: 'Test overview',
-      backdrop_path: 'test-path',
-      poster_path: 'test-poster-path',
+      title: "Test Movie",
+      overview: "Test overview",
+      backdrop_path: "test-path",
+      poster_path: "test-poster-path",
       vote_average: 8.5,
-      release_date: '2023-01-01',
-      genres: [{ id: 1, name: 'Action' }],
+      release_date: "2023-01-01",
+      genres: [{ id: 1, name: "Action" }],
     },
   }),
   fetchPopularMovies: jest.fn().mockResolvedValue({
     data: [
       {
         id: 123,
-        title: 'Test Movie',
-        overview: 'Test overview',
-        backdrop_path: 'test-path',
-        poster_path: 'test-poster-path',
+        title: "Test Movie",
+        overview: "Test overview",
+        backdrop_path: "test-path",
+        poster_path: "test-poster-path",
         vote_average: 8.5,
-        release_date: '2023-01-01',
+        release_date: "2023-01-01",
         genre_ids: [1],
       },
     ],
   }),
 }));
 
-jest.mock('../services/friendService', () => ({
+jest.mock("../services/friendService", () => ({
   FriendService: {
     getInstance: () => ({
       getFriends: jest.fn().mockResolvedValue([]),
@@ -59,7 +60,7 @@ jest.mock('../services/friendService', () => ({
   },
 }));
 
-jest.mock('../services/activityService', () => ({
+jest.mock("../services/activityService", () => ({
   ActivityService: {
     getInstance: () => ({
       getActivityFeed: jest.fn().mockResolvedValue([]),
@@ -70,14 +71,14 @@ jest.mock('../services/activityService', () => ({
 }));
 
 // Mock navigation components
-jest.mock('@react-navigation/bottom-tabs', () => ({
+jest.mock("@react-navigation/bottom-tabs", () => ({
   createBottomTabNavigator: () => ({
     Navigator: ({ children }) => <div>{children}</div>,
     Screen: ({ children }) => <div>{children}</div>,
   }),
 }));
 
-jest.mock('@react-navigation/stack', () => ({
+jest.mock("@react-navigation/stack", () => ({
   createStackNavigator: () => ({
     Navigator: ({ children }) => <div>{children}</div>,
     Screen: ({ children }) => <div>{children}</div>,
@@ -85,26 +86,26 @@ jest.mock('@react-navigation/stack', () => ({
 }));
 
 // Mock expo components
-jest.mock('expo-image', () => ({
-  Image: 'Image',
+jest.mock("expo-image", () => ({
+  Image: "Image",
 }));
 
-jest.mock('expo-av', () => ({
-  Video: 'Video',
+jest.mock("expo-av", () => ({
+  Video: "Video",
   ResizeMode: {
-    CONTAIN: 'contain',
+    CONTAIN: "contain",
   },
 }));
 
-describe('App Integration Tests', () => {
-  test('App renders without crashing', async () => {
+describe("App Integration Tests", () => {
+  test("App renders without crashing", async () => {
     // Suppress console errors during test
     const originalConsoleError = console.error;
     console.error = jest.fn();
-    
+
     try {
       const { getByText } = render(<App />);
-      
+
       // Wait for app to initialize
       await waitFor(() => {
         // This is just checking that the app renders without throwing errors
@@ -115,21 +116,23 @@ describe('App Integration Tests', () => {
       console.error = originalConsoleError;
     }
   });
-  
-  test('Offline notice appears when offline', async () => {
+
+  test("Offline notice appears when offline", async () => {
     // Mock offline state
-    OfflineService.getInstance().isConnected = jest.fn().mockResolvedValue(false);
-    
+    OfflineService.getInstance().isConnected = jest
+      .fn()
+      .mockResolvedValue(false);
+
     // Suppress console errors during test
     const originalConsoleError = console.error;
     console.error = jest.fn();
-    
+
     try {
       const { getByText } = render(<App />);
-      
+
       // Wait for offline notice to appear
       await waitFor(() => {
-        expect(getByText('No Internet Connection')).toBeTruthy();
+        expect(getByText("No Internet Connection")).toBeTruthy();
       });
     } finally {
       // Restore console.error

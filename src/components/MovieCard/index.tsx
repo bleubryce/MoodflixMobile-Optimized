@@ -1,7 +1,7 @@
-import React from 'react';
-import { View, StyleSheet, Image } from 'react-native';
-import { Card, Text, useTheme } from 'react-native-paper';
-import { TMDBMovie } from '../../types/tmdb';
+import { TMDBMovie } from "@types/tmdb";
+import React from "react";
+import { View, StyleSheet, Image } from "react-native";
+import { Card, Text, useTheme } from "react-native-paper";
 
 interface MovieCardProps {
   movie: TMDBMovie;
@@ -9,9 +9,13 @@ interface MovieCardProps {
   testID?: string;
 }
 
-export const MovieCard: React.FC<MovieCardProps> = ({ movie, onPress, testID }) => {
+export const MovieCard: React.FC<MovieCardProps> = ({
+  movie,
+  onPress,
+  testID,
+}) => {
   const theme = useTheme();
-  const imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
+  const imageBaseUrl = "https://image.tmdb.org/t/p/w500";
 
   return (
     <Card
@@ -25,7 +29,7 @@ export const MovieCard: React.FC<MovieCardProps> = ({ movie, onPress, testID }) 
           source={{
             uri: movie.poster_path
               ? `${imageBaseUrl}${movie.poster_path}`
-              : 'https://via.placeholder.com/500x750',
+              : "https://via.placeholder.com/500x750",
           }}
           style={styles.poster}
           resizeMode="cover"
@@ -62,22 +66,22 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   container: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 8,
   },
   poster: {
     height: 200,
-    width: '100%',
+    width: "100%",
     borderRadius: 8,
   },
   content: {
     flex: 1,
     marginLeft: 12,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   title: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
   },
   year: {
@@ -89,7 +93,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   rating: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
-}); 
+});

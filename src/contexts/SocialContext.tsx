@@ -1,6 +1,14 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { FriendService, Friend, FriendRequest } from '../services/friendService';
-import { ActivityService, ActivityItem } from '../services/activityService';
+import { activityService } from "@services/activityService";
+import { FriendService, Friend, FriendRequest } from "@services/friendService";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+} from "react";
+
+import { ActivityItem, ActivityType } from "@/types/activity";
 
 interface SocialContextType {
   friends: Friend[];
@@ -9,6 +17,7 @@ interface SocialContextType {
   isLoadingFriends: boolean;
   isLoadingRequests: boolean;
   isLoadingActivity: boolean;
+  hasMoreActivity: boolean;
   loadMoreActivity: () => Promise<void>;
   sendFriendRequest: (friendId: string) => Promise<void>;
   acceptFriendRequest: (requestId: string) => Promise<void>;
@@ -16,11 +25,11 @@ interface SocialContextType {
   removeFriend: (friendId: string) => Promise<void>;
   blockUser: (userId: string) => Promise<void>;
   createActivity: (
-    type: 'watch' | 'rate' | 'recommend' | 'friend' | 'mood',
+    type: ActivityType,
     content: string,
     resourceId?: string,
-    resourceType?: 'movie' | 'user' | 'mood',
-    isPrivate?: boolean
+    resourceType?: "movie" | "user" | "mood",
+    isPrivate?: boolean,
   ) => Promise<void>;
   refreshFriends: () => Promise<void>;
   refreshActivity: () => Promise<void>;
@@ -28,17 +37,21 @@ interface SocialContextType {
 
 const SocialContext = createContext<SocialContextType | undefined>(undefined);
 
-export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [activityFeed, setActivityFeed] = useState<ActivityItem[]>([]);
   const [isLoadingFriends, setIsLoadingFriends] = useState(true);
   const [isLoadingRequests, setIsLoadingRequests] = useState(true);
-  const [isLoadingActivity, setIsLoadingActivity] = useState(true);
-  const [activityOffset, setActivityOffset] = useState(0);
+  const [isLoadingActivity, setIsLoadingActivity] = useState(false);
+  const [hasMoreActivity, setHasMoreActivity] = useState(true);
+  const [lastActivityTimestamp, setLastActivityTimestamp] = useState<
+    string | null
+  >(null);
 
   const friendService = FriendService.getInstance();
-  const activityService = ActivityService.getInstance();
 
   useEffect(() => {
     loadInitialData();
@@ -46,76 +59,77 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     return () => {
       friendService.cleanup();
-      activityService.cleanup();
     };
   }, []);
 
   const loadInitialData = async () => {
-    await Promise.all([
-      refreshFriends(),
-      refreshActivity(),
-    ]);
+    await Promise.all([refreshFriends(), refreshActivity()]);
   };
 
   const setupSubscriptions = async () => {
-    await Promise.all([
-      friendService.setupRealtimeSubscription(),
-      activityService.setupRealtimeSubscription(),
-    ]);
+    await Promise.all([friendService.setupRealtimeSubscription()]);
   };
 
   const refreshFriends = async () => {
     try {
       setIsLoadingFriends(true);
       setIsLoadingRequests(true);
-      
+
       const [friendsData, requestsData] = await Promise.all([
         friendService.getFriends(),
         friendService.getFriendRequests(),
       ]);
-      
+
       setFriends(friendsData);
       setFriendRequests(requestsData);
     } catch (error) {
-      console.error('Error refreshing friends data:', error);
+      console.error("Error refreshing friends data:", error);
     } finally {
       setIsLoadingFriends(false);
       setIsLoadingRequests(false);
     }
   };
 
-  const refreshActivity = async () => {
+  const loadMoreActivity = useCallback(async () => {
+    if (!hasMoreActivity || isLoadingActivity) return;
+
+    setIsLoadingActivity(true);
     try {
-      setIsLoadingActivity(true);
-      setActivityOffset(0);
-      
-      const activityData = await activityService.getActivityFeed(20, 0);
-      setActivityFeed(activityData);
+      const { items, hasMore, lastTimestamp } =
+        await activityService.getActivityFeed(lastActivityTimestamp);
+
+      setActivityFeed((prev) => [...prev, ...items]);
+      setHasMoreActivity(hasMore);
+      setLastActivityTimestamp(lastTimestamp);
     } catch (error) {
-      console.error('Error refreshing activity feed:', error);
+      console.error("Failed to load activity feed:", error);
     } finally {
       setIsLoadingActivity(false);
     }
-  };
+  }, [hasMoreActivity, isLoadingActivity, lastActivityTimestamp]);
 
-  const loadMoreActivity = async () => {
+  const refreshActivity = useCallback(async () => {
+    setIsLoadingActivity(true);
     try {
-      const newOffset = activityOffset + 20;
-      setActivityOffset(newOffset);
-      
-      const moreActivity = await activityService.getActivityFeed(20, newOffset);
-      setActivityFeed(prev => [...prev, ...moreActivity]);
+      const { items, hasMore, lastTimestamp } =
+        await activityService.getActivityFeed(null);
+
+      setActivityFeed(items);
+      setHasMoreActivity(hasMore);
+      setLastActivityTimestamp(lastTimestamp);
     } catch (error) {
-      console.error('Error loading more activity:', error);
+      console.error("Failed to refresh activity feed:", error);
+    } finally {
+      setIsLoadingActivity(false);
     }
-  };
+  }, []);
 
   const sendFriendRequest = async (friendId: string) => {
     try {
       await friendService.sendFriendRequest(friendId);
       await refreshFriends();
     } catch (error) {
-      console.error('Error sending friend request:', error);
+      console.error("Error sending friend request:", error);
       throw error;
     }
   };
@@ -124,19 +138,18 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     try {
       await friendService.respondToFriendRequest(requestId, true);
       await refreshFriends();
-      
-      // Create activity for accepting friend request
+
       await activityService.createActivity(
-        'friend',
-        'Became friends with someone new',
+        "friend",
+        "Became friends with someone new",
         undefined,
-        'user',
-        false
+        "user",
+        false,
       );
-      
+
       await refreshActivity();
     } catch (error) {
-      console.error('Error accepting friend request:', error);
+      console.error("Error accepting friend request:", error);
       throw error;
     }
   };
@@ -146,7 +159,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       await friendService.respondToFriendRequest(requestId, false);
       await refreshFriends();
     } catch (error) {
-      console.error('Error declining friend request:', error);
+      console.error("Error declining friend request:", error);
       throw error;
     }
   };
@@ -156,7 +169,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       await friendService.removeFriend(friendId);
       await refreshFriends();
     } catch (error) {
-      console.error('Error removing friend:', error);
+      console.error("Error removing friend:", error);
       throw error;
     }
   };
@@ -166,23 +179,29 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       await friendService.blockUser(userId);
       await refreshFriends();
     } catch (error) {
-      console.error('Error blocking user:', error);
+      console.error("Error blocking user:", error);
       throw error;
     }
   };
 
   const createActivity = async (
-    type: 'watch' | 'rate' | 'recommend' | 'friend' | 'mood',
+    type: ActivityType,
     content: string,
     resourceId?: string,
-    resourceType?: 'movie' | 'user' | 'mood',
-    isPrivate: boolean = false
+    resourceType?: "movie" | "user" | "mood",
+    isPrivate = false,
   ) => {
     try {
-      await activityService.createActivity(type, content, resourceId, resourceType, isPrivate);
+      await activityService.createActivity(
+        type,
+        content,
+        resourceId,
+        resourceType,
+        isPrivate,
+      );
       await refreshActivity();
     } catch (error) {
-      console.error('Error creating activity:', error);
+      console.error("Error creating activity:", error);
       throw error;
     }
   };
@@ -196,6 +215,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         isLoadingFriends,
         isLoadingRequests,
         isLoadingActivity,
+        hasMoreActivity,
         loadMoreActivity,
         sendFriendRequest,
         acceptFriendRequest,
@@ -215,7 +235,7 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 export const useSocial = (): SocialContextType => {
   const context = useContext(SocialContext);
   if (context === undefined) {
-    throw new Error('useSocial must be used within a SocialProvider');
+    throw new Error("useSocial must be used within a SocialProvider");
   }
   return context;
 };

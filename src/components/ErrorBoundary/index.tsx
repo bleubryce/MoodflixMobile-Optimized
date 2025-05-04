@@ -1,46 +1,122 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Text, Button } from 'react-native-paper';
+import NetInfo from "@react-native-community/netinfo";
+import React, { Component, ReactNode } from "react";
+import { View, Text, Button, StyleSheet } from "react-native";
+
+import {
+  NetworkError,
+  ApiError,
+  CacheError,
+} from "../../services/movieService";
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  onError?: (error: Error) => void;
+  onRetry?: () => void;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
+  isRetrying: boolean;
+  retryCount: number;
 }
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
 
 export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null,
+    isRetrying: false,
+    retryCount: 0,
   };
 
   public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return {
+      hasError: true,
+      error,
+      isRetrying: false,
+      retryCount: 0,
+    };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error:', error, errorInfo);
+  public componentDidCatch(error: Error, errorInfo: any) {
+    console.error("Uncaught error:", error, errorInfo);
+    this.props.onError?.(error);
   }
 
-  private handleRetry = () => {
-    this.setState({ hasError: false, error: null });
-  };
+  private getErrorMessage(error: Error): string {
+    if (error instanceof NetworkError) {
+      return "Unable to connect to the network. Please check your internet connection.";
+    } else if (error instanceof ApiError) {
+      return `Server error (${error.status}). Please try again later.`;
+    } else if (error instanceof CacheError) {
+      return "Unable to load cached data. Please try again.";
+    }
+    return error.message || "Something went wrong";
+  }
+
+  private async handleRetry() {
+    const { retryCount } = this.state;
+
+    if (retryCount >= MAX_RETRIES) {
+      this.setState({
+        hasError: true,
+        error: new Error("Maximum retry attempts reached"),
+        isRetrying: false,
+      });
+      return;
+    }
+
+    this.setState({ isRetrying: true });
+
+    // For network errors, check connectivity before retrying
+    if (this.state.error instanceof NetworkError) {
+      const netInfo = await NetInfo.fetch();
+      if (!netInfo.isConnected) {
+        this.setState({
+          isRetrying: false,
+          error: new NetworkError("Still no network connection available"),
+        });
+        return;
+      }
+    }
+
+    // Add a small delay before retrying
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY));
+
+    this.setState(
+      (prevState) => ({
+        hasError: false,
+        error: null,
+        isRetrying: false,
+        retryCount: prevState.retryCount + 1,
+      }),
+      () => {
+        this.props.onRetry?.();
+      },
+    );
+  }
 
   public render() {
-    if (this.state.hasError) {
+    const { hasError, error, isRetrying } = this.state;
+
+    if (hasError) {
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
       return (
         <View style={styles.container}>
-          <Text style={styles.title}>Something went wrong</Text>
-          <Text style={styles.message}>{this.state.error?.message}</Text>
-          <Button title="Try again" onPress={this.handleRetry} />
+          <Text style={styles.title}>Error</Text>
+          <Text style={styles.message}>{this.getErrorMessage(error!)}</Text>
+          <Button
+            title={isRetrying ? "Retrying..." : "Try again"}
+            onPress={() => this.handleRetry()}
+            disabled={isRetrying}
+          />
         </View>
       );
     }
@@ -51,19 +127,19 @@ export class ErrorBoundary extends Component<Props, State> {
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
     flex: 1,
-    justifyContent: 'center',
-    padding: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontWeight: "bold",
+    marginBottom: 10,
   },
   message: {
-    fontSize: 16,
-    marginBottom: 16,
-    textAlign: 'center',
+    textAlign: "center",
+    marginBottom: 20,
+    color: "#666",
   },
-}); 
+});

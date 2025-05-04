@@ -1,11 +1,11 @@
-import { TMDBMovie } from './tmdb';
+import { TMDBMovie } from "./tmdb";
 
 export interface WatchParty {
   id: string;
   movieId: number;
   movie: TMDBMovie;
   hostId: string;
-  status: 'pending' | 'active' | 'ended';
+  status: "pending" | "active" | "ended";
   createdAt: string;
   updatedAt: string;
   participants: WatchPartyParticipant[];
@@ -20,7 +20,7 @@ export interface WatchPartyParticipant {
   avatarUrl?: string;
   joinedAt: string;
   lastSeen: string;
-  status: 'active' | 'inactive' | 'left';
+  status: "active" | "inactive" | "left";
 }
 
 export interface ChatMessage {
@@ -29,7 +29,7 @@ export interface ChatMessage {
   username: string;
   content: string;
   timestamp: string;
-  type: 'message' | 'system';
+  type: "message" | "system";
 }
 
 export interface WatchPartyState {
@@ -53,4 +53,4 @@ export interface WatchPartyError {
   code: string;
   message: string;
   details?: any;
-} 
+}

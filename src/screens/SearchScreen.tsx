@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Searchbar, ActivityIndicator } from 'react-native-paper';
-import { TMDBMovie } from '../types/tmdb';
-import { movieService } from '../services/movieService';
+import { movieService } from "@services/movieService";
+import { TMDBMovie } from "@types/tmdb";
+import React, { useState } from "react";
+import { View, StyleSheet } from "react-native";
+import { Searchbar, ActivityIndicator } from "react-native-paper";
 
 const styles = StyleSheet.create({
   container: {
@@ -12,14 +12,14 @@ const styles = StyleSheet.create({
     margin: 16,
   },
   loadingContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
 });
 
 export const SearchScreen: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [movies, setMovies] = useState<TMDBMovie[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -31,7 +31,7 @@ export const SearchScreen: React.FC = () => {
         const results = await movieService.searchMovies(query);
         setMovies(results);
       } catch (error) {
-        console.error('Error searching movies:', error);
+        console.error("Error searching movies:", error);
       } finally {
         setLoading(false);
       }
@@ -55,4 +55,4 @@ export const SearchScreen: React.FC = () => {
       ) : null}
     </View>
   );
-}; 
+};

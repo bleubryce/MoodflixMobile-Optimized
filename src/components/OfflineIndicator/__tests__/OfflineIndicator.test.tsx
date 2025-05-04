@@ -1,15 +1,16 @@
-import React from 'react';
-import { render, act } from '@testing-library/react-native';
-import { OfflineIndicator } from '../index';
-import { OfflineService } from '../../../services/offlineService';
+import { render, act } from "@testing-library/react-native";
+import React from "react";
 
-jest.mock('../../../services/offlineService', () => ({
+import { OfflineService } from "../../../services/offlineService";
+import { OfflineIndicator } from "../index";
+
+jest.mock("../../../services/offlineService", () => ({
   OfflineService: {
     subscribeToNetworkChanges: jest.fn(),
   },
 }));
 
-describe('OfflineIndicator', () => {
+describe("OfflineIndicator", () => {
   let mockCallback: (isConnected: boolean) => void;
 
   beforeEach(() => {
@@ -18,7 +19,7 @@ describe('OfflineIndicator', () => {
       (callback) => {
         mockCallback = callback;
         return () => {};
-      }
+      },
     );
   });
 
@@ -26,21 +27,21 @@ describe('OfflineIndicator', () => {
     jest.clearAllMocks();
   });
 
-  it('should not render when online', () => {
+  it("should not render when online", () => {
     const { queryByText } = render(<OfflineIndicator />);
-    expect(queryByText('You are offline')).toBeNull();
+    expect(queryByText("You are offline")).toBeNull();
   });
 
-  it('should render when offline', () => {
+  it("should render when offline", () => {
     const { getByText } = render(<OfflineIndicator />);
     act(() => {
       mockCallback(false);
     });
-    expect(getByText('You are offline')).toBeTruthy();
+    expect(getByText("You are offline")).toBeTruthy();
   });
 
-  it('should subscribe to network changes on mount', () => {
+  it("should subscribe to network changes on mount", () => {
     render(<OfflineIndicator />);
     expect(OfflineService.subscribeToNetworkChanges).toHaveBeenCalled();
   });
-}); 
+});

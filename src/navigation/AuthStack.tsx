@@ -1,8 +1,8 @@
-import React from 'react';
-import { createStackNavigator } from '@react-navigation/stack';
-import { LoginScreen } from '../screens/auth/LoginScreen';
-import { RegisterScreen } from '../screens/auth/RegisterScreen';
-import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
+import { createStackNavigator } from "@react-navigation/stack";
+import { ForgotPasswordScreen } from "@screens/auth/ForgotPasswordScreen";
+import { LoginScreen } from "@screens/auth/LoginScreen";
+import { RegisterScreen } from "@screens/auth/RegisterScreen";
+import React from "react";
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -18,7 +18,7 @@ export const AuthStack: React.FC = () => {
       initialRouteName="Login"
       screenOptions={{
         headerShown: false,
-        cardStyle: { backgroundColor: '#fff' },
+        cardStyle: { backgroundColor: "#fff" },
       }}
     >
       <Stack.Screen name="Login" component={LoginScreen} />
@@ -26,4 +26,4 @@ export const AuthStack: React.FC = () => {
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
     </Stack.Navigator>
   );
-}; 
+};

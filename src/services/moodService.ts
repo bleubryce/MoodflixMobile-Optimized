@@ -1,15 +1,13 @@
-import { Movie } from '../types/movie';
-import { WatchHistory } from '../types';
-import { fetchPopularMovies, saveMovieMood, getWatchHistory } from './movieService';
-import { OfflineService } from './offlineService';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { supabase } from "../lib/supabase";
+import { CacheError, DatabaseError, ApiError } from "../types/errors";
+import { ErrorHandler } from "../utils/errorHandler";
+import { Movie, movieService } from './movieService';
+import { Mood, MoodPreferences, MoodHistory } from '../types/mood';
 
-export type Mood = 'happy' | 'sad' | 'excited' | 'relaxed' | 'thoughtful';
-
-interface MoodPreferences {
-  genres: number[];
-  keywords: string[];
-  minRating: number;
-}
+const MOOD_CACHE_KEY = "@mood_cache";
+const MOOD_HISTORY_KEY = "@mood_history";
+const errorHandler = ErrorHandler.getInstance();
 
 const moodPreferences: Record<Mood, MoodPreferences> = {
   happy: {
@@ -39,15 +37,14 @@ const moodPreferences: Record<Mood, MoodPreferences> = {
   },
 };
 
-export class MoodService {
-  static async getRecommendations(mood: Mood): Promise<Movie[]> {
+export const moodService = {
+  async getRecommendations(mood: Mood): Promise<Movie[]> {
     try {
-      const preferences = moodPreferences[mood];
-      const response = await fetchPopularMovies();
-      const movies = response.data || [];
+      const { results: movies } = await movieService.getMoodBasedMovies(mood);
       
       // Filter movies based on mood preferences
-      const recommendations = movies.filter(movie => {
+      const preferences = moodPreferences[mood];
+      const recommendations = movies.filter((movie) => {
         const matchesGenre = movie.genre_ids.some(id => preferences.genres.includes(id));
         const matchesRating = movie.vote_average >= preferences.minRating;
         const matchesKeywords = preferences.keywords.some(keyword => 
@@ -58,38 +55,146 @@ export class MoodService {
         return matchesGenre && matchesRating && matchesKeywords;
       });
 
-      // Cache the recommendations for offline access
-      await OfflineService.cacheMovies(recommendations);
+      // Cache the recommendations
+      try {
+        await AsyncStorage.setItem(
+          `${MOOD_CACHE_KEY}_${mood}`,
+          JSON.stringify({ recommendations, timestamp: Date.now() })
+        );
+      } catch (cacheError) {
+        await errorHandler.handleError(
+          new CacheError(
+            'Failed to cache mood recommendations',
+            `${MOOD_CACHE_KEY}_${mood}`,
+            'write'
+          ),
+          {
+            componentName: 'moodService',
+            action: 'getRecommendations_cache',
+            additionalInfo: { mood }
+          }
+        );
+      }
 
       return recommendations;
     } catch (error) {
-      console.error('Error getting mood recommendations:', error);
+      await errorHandler.handleError(
+        error instanceof Error ? error : new Error('Unknown error in getRecommendations'),
+        {
+          componentName: 'moodService',
+          action: 'getRecommendations',
+          additionalInfo: { mood }
+        }
+      );
+
       // Try to get cached recommendations if available
-      const cachedMovies = await OfflineService.getCachedMovies();
-      return cachedMovies || [];
+      try {
+        const cached = await AsyncStorage.getItem(`${MOOD_CACHE_KEY}_${mood}`);
+        if (cached) {
+          const { recommendations } = JSON.parse(cached);
+          return recommendations;
+        }
+      } catch (cacheError) {
+        await errorHandler.handleError(
+          new CacheError(
+            'Failed to retrieve cached recommendations',
+            `${MOOD_CACHE_KEY}_${mood}`,
+            'read'
+          ),
+          {
+            componentName: 'moodService',
+            action: 'getRecommendations_cache',
+            additionalInfo: { mood }
+          }
+        );
+      }
+      
+      throw new ApiError(
+        'Failed to get mood recommendations',
+        500,
+        '/recommendations',
+        'GET',
+        error
+      );
     }
-  }
+  },
 
-  static async saveMoodPreference(movieId: number, userId: string, mood: Mood): Promise<void> {
+  async saveMoodPreference(movieId: number, userId: string, mood: Mood): Promise<void> {
     try {
-      await saveMovieMood(movieId, userId, mood);
+      const { error } = await supabase
+        .from('movie_moods')
+        .insert({
+          movie_id: movieId,
+          user_id: userId,
+          mood,
+          created_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      // Update mood history in local storage
+      try {
+        const historyStr = await AsyncStorage.getItem(MOOD_HISTORY_KEY);
+        const history: MoodHistory[] = historyStr ? JSON.parse(historyStr) : [];
+        
+        history.push({
+          movieId,
+          mood,
+          timestamp: new Date().toISOString()
+        });
+
+        // Keep only last 50 entries
+        const updatedHistory = history.slice(-50);
+        await AsyncStorage.setItem(MOOD_HISTORY_KEY, JSON.stringify(updatedHistory));
+      } catch (cacheError) {
+        await errorHandler.handleError(
+          new CacheError(
+            'Failed to update mood history cache',
+            MOOD_HISTORY_KEY,
+            'write'
+          ),
+          {
+            componentName: 'moodService',
+            action: 'saveMoodPreference_cache',
+            additionalInfo: { movieId, userId, mood }
+          }
+        );
+      }
     } catch (error) {
-      console.error('Error saving mood preference:', error);
-      throw error;
+      await errorHandler.handleError(
+        error instanceof Error ? error : new Error('Unknown error in saveMoodPreference'),
+        {
+          componentName: 'moodService',
+          action: 'saveMoodPreference',
+          additionalInfo: { movieId, userId, mood }
+        }
+      );
+      throw new DatabaseError(
+        'Failed to save mood preference',
+        'create',
+        'movie_moods',
+        error
+      );
     }
-  }
+  },
 
-  static async getMoodHistory(userId: string): Promise<{ movieId: number; mood: Mood }[]> {
+  async getMoodHistory(): Promise<MoodHistory[]> {
     try {
-      const response = await getWatchHistory(userId);
-      const history = response.data || [];
-      return history.map(entry => ({
-        movieId: entry.movie_id,
-        mood: entry.mood as Mood,
-      }));
+      const historyStr = await AsyncStorage.getItem(MOOD_HISTORY_KEY);
+      return historyStr ? JSON.parse(historyStr) : [];
     } catch (error) {
-      console.error('Error getting mood history:', error);
+      await errorHandler.handleError(
+        new CacheError(
+          'Failed to retrieve mood history',
+          MOOD_HISTORY_KEY,
+          'read'
+        ),
+        {
+          componentName: 'moodService',
+          action: 'getMoodHistory',
+        }
+      );
       return [];
     }
   }
-} 
+};

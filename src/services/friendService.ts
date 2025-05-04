@@ -1,9 +1,9 @@
-import { User } from '../types/user';
-import { supabase } from '../config/supabase';
-import { OfflineService } from './offlineService';
-import { NotificationService } from './notificationService';
-
-export type FriendStatus = 'pending' | 'accepted' | 'declined' | 'blocked';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import NetInfo from "@react-native-community/netinfo";
+import { supabase } from "../lib/supabase";
+import { AuthenticationError, DatabaseError, NetworkError, CacheError } from "../types/errors";
+import { ErrorHandler } from "../utils/errorHandler";
+import { User } from "../types/user";
 
 export interface FriendRequest {
   id: string;
@@ -16,88 +16,203 @@ export interface FriendRequest {
   updatedAt: string;
 }
 
+export type FriendStatus = "pending" | "accepted" | "rejected" | "blocked";
+
 export interface Friend {
   id: string;
-  userId: string;
-  name: string;
-  avatar?: string;
-  status: 'online' | 'offline' | 'away';
-  lastActive: string;
+  friendship_id: string;
+  username: string;
+  avatar_url?: string;
+  status: FriendStatus;
+  created_at: string;
 }
 
-export class FriendService {
-  private static instance: FriendService;
+export interface UserProfile {
+  id: string;
+  username: string;
+  avatar_url?: string;
+  created_at: string;
+}
+
+export interface Friend extends UserProfile {
+  friendship_id: string;
+  status: FriendStatus;
+}
+
+interface BlockedUser {
+  blocked_id: string;
+  blocked: User;
+}
+
+const FRIENDS_CACHE_KEY = "@friends_cache";
+const REQUESTS_CACHE_KEY = "@friend_requests_cache";
+const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
+
+class FriendServiceImpl {
+  private static instance: FriendServiceImpl | null = null;
   private subscription: any = null;
+  private readonly errorHandler = ErrorHandler.getInstance();
 
   private constructor() {}
 
-  static getInstance(): FriendService {
-    if (!FriendService.instance) {
-      FriendService.instance = new FriendService();
+  public static getInstance(): FriendServiceImpl {
+    if (!FriendServiceImpl.instance) {
+      FriendServiceImpl.instance = new FriendServiceImpl();
     }
-    return FriendService.instance;
+    return FriendServiceImpl.instance;
   }
 
   private async getCurrentUserId(): Promise<string> {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    if (error || !session) {
-      throw new Error('No active session');
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) {
+      throw new AuthenticationError("User not authenticated", "auth", "supabase");
     }
-    return session.user.id;
+    return user.id;
+  }
+
+  async checkNetworkConnection(): Promise<void> {
+    try {
+      const netInfo = await NetInfo.fetch();
+      if (!netInfo.isConnected) {
+        throw new NetworkError("Network connection unavailable");
+      }
+    } catch (error) {
+      await this.errorHandler.handleError(
+        error instanceof Error ? error : new NetworkError("Failed to check network connection"),
+        {
+          componentName: "FriendService",
+          action: "checkNetworkConnection",
+        }
+      );
+      throw error;
+    }
   }
 
   async getFriends(): Promise<Friend[]> {
     try {
+      await this.checkNetworkConnection();
       const userId = await this.getCurrentUserId();
-      
+
       // Try to get from cache first
-      const cachedFriends = await OfflineService.getCachedData<Friend[]>(`friends_${userId}`);
-      if (cachedFriends) {
-        return cachedFriends;
+      try {
+        const cached = await AsyncStorage.getItem(FRIENDS_CACHE_KEY);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          // Cache valid for 1 hour
+          if (Date.now() - timestamp < 60 * 60 * 1000) {
+            return data;
+          }
+        }
+      } catch (cacheError) {
+        await this.errorHandler.handleError(
+          new CacheError(
+            "Failed to read friends cache",
+            FRIENDS_CACHE_KEY,
+            "read"
+          ),
+          {
+            componentName: "FriendService",
+            action: "getFriends_cache",
+            severity: "warning"
+          }
+        );
       }
 
-      const { data: friendConnections, error } = await supabase
-        .from('friend_connections')
-        .select('*, profiles:friend_id(*)')
-        .eq('user_id', userId)
-        .eq('status', 'accepted');
+      const { data: friends, error } = await supabase
+        .from("friends")
+        .select("*")
+        .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
+        .eq("status", "accepted");
 
-      if (error) throw error;
-
-      const friends: Friend[] = friendConnections.map(connection => ({
-        id: connection.id,
-        userId: connection.friend_id,
-        name: connection.profiles.display_name || connection.profiles.username,
-        avatar: connection.profiles.avatar_url,
-        status: connection.profiles.online_status || 'offline',
-        lastActive: connection.profiles.last_active,
-      }));
+      if (error) {
+        throw new DatabaseError(
+          "Failed to fetch friends",
+          "read",
+          "friends",
+          error
+        );
+      }
 
       // Cache the friends list
-      await OfflineService.cacheData(`friends_${userId}`, friends, 5 * 60 * 1000); // 5 minutes TTL
+      try {
+        await AsyncStorage.setItem(
+          FRIENDS_CACHE_KEY,
+          JSON.stringify({
+            data: friends,
+            timestamp: Date.now(),
+          })
+        );
+      } catch (error) {
+        const cacheError = new CacheError(
+          "Failed to write friends cache",
+          FRIENDS_CACHE_KEY,
+          "write"
+        );
+        await this.errorHandler.handleError(cacheError, {
+          componentName: "FriendService",
+          action: "getFriends",
+          severity: "warning"
+        });
+      }
 
       return friends;
     } catch (error) {
-      console.error('Error getting friends:', error);
-      // Try to get from cache as fallback
-      const cachedFriends = await OfflineService.getCachedData<Friend[]>(`friends_${userId}`);
-      return cachedFriends || [];
+      await this.errorHandler.handleError(
+        error instanceof Error ? error : new Error("Failed to get friends"),
+        {
+          componentName: "FriendService",
+          action: "getFriends",
+          additionalInfo: { userId: await this.getCurrentUserId() },
+        }
+      );
+      throw error;
     }
   }
 
   async getFriendRequests(): Promise<FriendRequest[]> {
     try {
       const userId = await this.getCurrentUserId();
-      
+
+      // Try to get from cache first
+      try {
+        const cached = await AsyncStorage.getItem(REQUESTS_CACHE_KEY);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_EXPIRY) {
+            return data;
+          }
+        }
+      } catch (error) {
+        const cacheError = new CacheError(
+          "Failed to read friend requests cache",
+          REQUESTS_CACHE_KEY,
+          "read"
+        );
+        await this.errorHandler.handleError(cacheError, {
+          componentName: "friendService",
+          action: "getFriendRequests",
+          severity: "warning"
+        });
+      }
+
+      await this.checkNetworkConnection();
+
       const { data: requests, error } = await supabase
-        .from('friend_requests')
-        .select('*, sender:sender_id(username, avatar_url)')
-        .eq('receiver_id', userId)
-        .order('created_at', { ascending: false });
+        .from("friend_requests")
+        .select("*, sender:sender_id(username, avatar_url)")
+        .eq("receiver_id", userId)
+        .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        throw new DatabaseError(
+          "Failed to fetch friend requests",
+          "read",
+          "friend_requests",
+          error
+        );
+      }
 
-      return requests.map(request => ({
+      const formattedRequests = requests.map((request) => ({
         id: request.id,
         senderId: request.sender_id,
         senderName: request.sender.username,
@@ -107,46 +222,71 @@ export class FriendService {
         createdAt: request.created_at,
         updatedAt: request.updated_at,
       }));
+
+      // Cache the results
+      try {
+        await AsyncStorage.setItem(
+          REQUESTS_CACHE_KEY,
+          JSON.stringify({
+            data: formattedRequests,
+            timestamp: Date.now(),
+          })
+        );
+      } catch (error) {
+        const cacheError = new CacheError(
+          "Failed to write friend requests cache",
+          REQUESTS_CACHE_KEY,
+          "write"
+        );
+        await this.errorHandler.handleError(cacheError, {
+          componentName: "friendService",
+          action: "getFriendRequests",
+          severity: "warning"
+        });
+      }
+
+      return formattedRequests;
     } catch (error) {
-      console.error('Error getting friend requests:', error);
-      return [];
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "friendService",
+          action: "getFriendRequests",
+          additionalInfo: { userId: await this.getCurrentUserId() },
+        });
+      }
+      throw error;
     }
   }
 
   async sendFriendRequest(friendId: string): Promise<void> {
     try {
       const userId = await this.getCurrentUserId();
-      
-      // Check if request already exists
-      const { data: existingRequests } = await supabase
-        .from('friend_requests')
-        .select('*')
-        .or(`and(sender_id.eq.${userId},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${userId})`);
+      await this.checkNetworkConnection();
 
-      if (existingRequests && existingRequests.length > 0) {
-        throw new Error('A friend request already exists between these users');
-      }
-
-      // Create new request
       const { error } = await supabase
-        .from('friend_requests')
+        .from("friend_requests")
         .insert({
           sender_id: userId,
           receiver_id: friendId,
-          status: 'pending',
+          status: "pending",
         });
 
-      if (error) throw error;
-
-      // Send notification to the receiver
-      await NotificationService.sendNotification(
-        friendId,
-        'New Friend Request',
-        'You have received a new friend request',
-        { type: 'friend_request', senderId: userId }
-      );
+      if (error) {
+        throw new DatabaseError(
+          "Failed to send friend request",
+          "create",
+          "friend_requests",
+          error
+        );
+      }
     } catch (error) {
-      console.error('Error sending friend request:', error);
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "friendService",
+          action: "sendFriendRequest",
+          additionalInfo: { friendId },
+        });
+      }
       throw error;
     }
   }
@@ -154,46 +294,32 @@ export class FriendService {
   async respondToFriendRequest(requestId: string, accept: boolean): Promise<void> {
     try {
       const userId = await this.getCurrentUserId();
-      
-      // Update request status
-      const { data: request, error } = await supabase
-        .from('friend_requests')
-        .update({ 
-          status: accept ? 'accepted' : 'declined',
-          updated_at: new Date().toISOString(),
+      await this.checkNetworkConnection();
+
+      const { error } = await supabase
+        .from("friend_requests")
+        .update({
+          status: accept ? "accepted" : "rejected",
         })
-        .eq('id', requestId)
-        .eq('receiver_id', userId)
-        .select('*')
-        .single();
+        .eq("id", requestId)
+        .eq("receiver_id", userId);
 
-      if (error) throw error;
-
-      if (accept) {
-        // Create friend connections for both users
-        await Promise.all([
-          supabase.from('friend_connections').insert({
-            user_id: userId,
-            friend_id: request.sender_id,
-            status: 'accepted',
-          }),
-          supabase.from('friend_connections').insert({
-            user_id: request.sender_id,
-            friend_id: userId,
-            status: 'accepted',
-          }),
-        ]);
-
-        // Send notification to the sender
-        await NotificationService.sendNotification(
-          request.sender_id,
-          'Friend Request Accepted',
-          'Your friend request has been accepted',
-          { type: 'friend_request_accepted', receiverId: userId }
+      if (error) {
+        throw new DatabaseError(
+          "Failed to respond to friend request",
+          "update",
+          "friend_requests",
+          error
         );
       }
     } catch (error) {
-      console.error('Error responding to friend request:', error);
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "friendService",
+          action: "respondToFriendRequest",
+          additionalInfo: { requestId, accept },
+        });
+      }
       throw error;
     }
   }
@@ -201,25 +327,29 @@ export class FriendService {
   async removeFriend(friendId: string): Promise<void> {
     try {
       const userId = await this.getCurrentUserId();
-      
-      // Remove both connections
-      await Promise.all([
-        supabase
-          .from('friend_connections')
-          .delete()
-          .eq('user_id', userId)
-          .eq('friend_id', friendId),
-        supabase
-          .from('friend_connections')
-          .delete()
-          .eq('user_id', friendId)
-          .eq('friend_id', userId),
-      ]);
+      await this.checkNetworkConnection();
 
-      // Clear cache
-      await OfflineService.clearCache(`friends_${userId}`);
+      const { error } = await supabase
+        .from("friend_connections")
+        .delete()
+        .or(`user_id.eq.${userId},friend_id.eq.${friendId}`);
+
+      if (error) {
+        throw new DatabaseError(
+          "Failed to remove friend",
+          "delete",
+          "friend_connections",
+          error
+        );
+      }
     } catch (error) {
-      console.error('Error removing friend:', error);
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "friendService",
+          action: "removeFriend",
+          additionalInfo: { friendId },
+        });
+      }
       throw error;
     }
   }
@@ -227,19 +357,31 @@ export class FriendService {
   async blockUser(userId: string): Promise<void> {
     try {
       const currentUserId = await this.getCurrentUserId();
-      
-      // First remove any existing friend connections
-      await this.removeFriend(userId);
+      await this.checkNetworkConnection();
 
-      // Then create a block record
-      await supabase
-        .from('user_blocks')
+      const { error } = await supabase
+        .from("blocked_users")
         .insert({
           blocker_id: currentUserId,
           blocked_id: userId,
         });
+
+      if (error) {
+        throw new DatabaseError(
+          "Failed to block user",
+          "create",
+          "blocked_users",
+          error
+        );
+      }
     } catch (error) {
-      console.error('Error blocking user:', error);
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "friendService",
+          action: "blockUser",
+          additionalInfo: { userId },
+        });
+      }
       throw error;
     }
   }
@@ -247,92 +389,153 @@ export class FriendService {
   async unblockUser(userId: string): Promise<void> {
     try {
       const currentUserId = await this.getCurrentUserId();
-      
-      await supabase
-        .from('user_blocks')
+      await this.checkNetworkConnection();
+
+      const { error } = await supabase
+        .from("blocked_users")
         .delete()
-        .eq('blocker_id', currentUserId)
-        .eq('blocked_id', userId);
+        .match({ blocker_id: currentUserId, blocked_id: userId });
+
+      if (error) {
+        throw new DatabaseError(
+          "Failed to unblock user",
+          "delete",
+          "blocked_users",
+          error
+        );
+      }
     } catch (error) {
-      console.error('Error unblocking user:', error);
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "friendService",
+          action: "unblockUser",
+          additionalInfo: { userId },
+        });
+      }
       throw error;
     }
   }
 
   async getBlockedUsers(): Promise<User[]> {
     try {
-      const currentUserId = await this.getCurrentUserId();
-      
-      const { data, error } = await supabase
-        .from('user_blocks')
-        .select('blocked_id, profiles:blocked_id(*)')
-        .eq('blocker_id', currentUserId);
-
-      if (error) throw error;
-
-      return data.map(item => ({
-        id: item.blocked_id,
-        username: item.profiles.username,
-        email: item.profiles.email,
-        avatarUrl: item.profiles.avatar_url,
-        displayName: item.profiles.display_name,
-      }));
-    } catch (error) {
-      console.error('Error getting blocked users:', error);
-      return [];
-    }
-  }
-
-  async setupRealtimeSubscription(): Promise<void> {
-    try {
       const userId = await this.getCurrentUserId();
-      
-      // Clean up existing subscription if any
-      if (this.subscription) {
-        this.subscription.unsubscribe();
+      await this.checkNetworkConnection();
+
+      const { data, error } = await supabase
+        .from("blocked_users")
+        .select("blocked_id, blocked:blocked_id(id, username, avatar_url)")
+        .eq("blocker_id", userId) as { data: BlockedUser[] | null, error: any };
+
+      if (error) {
+        throw new DatabaseError(
+          "Failed to get blocked users",
+          "read",
+          "blocked_users",
+          error
+        );
       }
 
-      // Subscribe to friend requests
-      this.subscription = supabase
-        .channel('friend_changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'friend_requests',
-            filter: `receiver_id=eq.${userId}`,
-          },
-          (payload) => {
-            // Handle friend request changes
-            console.log('Friend request change:', payload);
-            // Trigger UI updates or notifications
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'friend_connections',
-            filter: `user_id=eq.${userId}`,
-          },
-          (payload) => {
-            // Handle friend connection changes
-            console.log('Friend connection change:', payload);
-            // Trigger UI updates
-          }
-        )
-        .subscribe();
+      return data?.map((item) => item.blocked) || [];
     } catch (error) {
-      console.error('Error setting up friend subscription:', error);
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "friendService",
+          action: "getBlockedUsers",
+          additionalInfo: { userId: await this.getCurrentUserId() },
+        });
+      }
+      throw error;
     }
   }
 
-  cleanup(): void {
+  async searchUsers(query: string): Promise<UserProfile[]> {
+    try {
+      await this.checkNetworkConnection();
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, username, avatar_url, created_at")
+        .ilike("username", `%${query}%`)
+        .limit(20);
+
+      if (error) {
+        throw new DatabaseError(
+          "Failed to search users",
+          "read",
+          "profiles",
+          error
+        );
+      }
+
+      return data || [];
+    } catch (error) {
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "friendService",
+          action: "searchUsers",
+          additionalInfo: { query },
+        });
+      }
+      throw error;
+    }
+  }
+
+  async invalidateCache(key: string): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(`${FRIENDS_CACHE_KEY}_${key}`);
+    } catch (error) {
+      if (error instanceof Error) {
+        const cacheError = new CacheError(
+          "Failed to invalidate cache",
+          `${FRIENDS_CACHE_KEY}_${key}`,
+          "delete"
+        );
+        await this.errorHandler.handleError(cacheError, {
+          componentName: "friendService",
+          action: "invalidateCache",
+          additionalInfo: { key },
+        });
+      }
+    }
+  }
+
+  setupRealtimeSubscription() {
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+    }
+
+    this.subscription = supabase
+      .channel('friend_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'friends',
+      }, async (payload) => {
+        try {
+          await this.handleRealtimeUpdate(payload);
+        } catch (error) {
+          if (error instanceof Error) {
+            await this.errorHandler.handleError(error, {
+              componentName: "FriendService",
+              action: "handleRealtimeUpdate",
+              additionalInfo: { payload },
+            });
+          }
+        }
+      })
+      .subscribe();
+  }
+
+  private async handleRealtimeUpdate(payload: any) {
+    // Implementation of realtime update handling
+  }
+
+  cleanup() {
     if (this.subscription) {
       this.subscription.unsubscribe();
       this.subscription = null;
     }
   }
 }
+
+export const friendService = FriendServiceImpl.getInstance();

@@ -1,10 +1,10 @@
-import { Movie } from './movie';
-import { User } from './auth';
-import { NotificationPreferences } from './notifications';
-import { OfflineState } from './offline';
-import { WatchParty, WatchPartyParticipant, ChatMessage } from './watchParty';
+import { Movie } from "./movie";
+import { User } from "./auth";
+import { NotificationPreferences } from "./notifications";
+import { OfflineState } from "./offline";
+import { WatchParty, WatchPartyParticipant, ChatMessage } from "./watchParty";
 
-declare module 'src/components/MovieCard' {
+declare module "src/components/MovieCard" {
   interface MovieCardProps {
     movie: Movie;
     onPress: (movie: Movie) => void;
@@ -13,7 +13,7 @@ declare module 'src/components/MovieCard' {
   export const MovieCard: React.FC<MovieCardProps>;
 }
 
-declare module 'src/components/MovieList' {
+declare module "src/components/MovieList" {
   interface MovieListProps {
     movies: Movie[];
     onMoviePress: (movie: Movie) => void;
@@ -25,7 +25,7 @@ declare module 'src/components/MovieList' {
   export const MovieList: React.FC<MovieListProps>;
 }
 
-declare module 'src/components/MovieDetails' {
+declare module "src/components/MovieDetails" {
   interface MovieDetailsProps {
     movie: Movie;
     onClose: () => void;
@@ -34,7 +34,7 @@ declare module 'src/components/MovieDetails' {
   export const MovieDetails: React.FC<MovieDetailsProps>;
 }
 
-declare module 'src/components/UserProfile' {
+declare module "src/components/UserProfile" {
   interface UserProfileProps {
     user: User;
     onEditProfile: () => void;
@@ -43,7 +43,7 @@ declare module 'src/components/UserProfile' {
   export const UserProfile: React.FC<UserProfileProps>;
 }
 
-declare module 'src/components/NotificationSettings' {
+declare module "src/components/NotificationSettings" {
   interface NotificationSettingsProps {
     preferences: NotificationPreferences;
     onPreferencesChange: (preferences: NotificationPreferences) => void;
@@ -51,7 +51,7 @@ declare module 'src/components/NotificationSettings' {
   export const NotificationSettings: React.FC<NotificationSettingsProps>;
 }
 
-declare module 'src/components/OfflineIndicator' {
+declare module "src/components/OfflineIndicator" {
   interface OfflineIndicatorProps {
     offlineState: OfflineState;
     onRetry: () => void;
@@ -59,7 +59,7 @@ declare module 'src/components/OfflineIndicator' {
   export const OfflineIndicator: React.FC<OfflineIndicatorProps>;
 }
 
-declare module 'src/components/WatchPartyCard' {
+declare module "src/components/WatchPartyCard" {
   interface WatchPartyCardProps {
     party: WatchParty;
     onJoin: (partyId: string) => void;
@@ -98,4 +98,4 @@ export interface VideoPlayerProps {
   posterStyle?: any;
   usePoster?: boolean;
   ref?: React.RefObject<any>;
-} 
+}

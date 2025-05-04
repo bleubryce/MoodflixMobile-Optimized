@@ -3,25 +3,45 @@ import { User } from './auth';
 import { NotificationPreferences } from './notifications';
 import { OfflineState } from './offline';
 import { WatchParty } from './watchParty';
+import { StackNavigationProp } from '@react-navigation/stack';
 
 export type RootStackParamList = {
   Auth: undefined;
   Main: undefined;
-  ActivityFeed: undefined;
+  BiometricAuth: undefined;
   MovieDetail: { movieId: number };
+  Profile: { userId: string };
+  Chat: { friendId: string };
 };
 
 export type AuthStackParamList = {
-  SignIn: undefined;
-  SignUp: undefined;
+  Login: undefined;
+  Register: undefined;
   ForgotPassword: undefined;
 };
 
+export type MainStackParamList = {
+  Home: undefined;
+  Profile: { userId: string };
+  Search: undefined;
+  MovieDetail: { movieId: number };
+  Settings: undefined;
+  WatchParty: { movieId: number };
+  Friends: undefined;
+  ActivityFeed: undefined;
+  Chat: { friendId: string };
+};
+
+export type RootStackNavigationProp = StackNavigationProp<RootStackParamList>;
+export type AuthStackNavigationProp = StackNavigationProp<AuthStackParamList>;
+export type MainStackNavigationProp = StackNavigationProp<MainStackParamList>;
+
 export type MainTabParamList = {
   Home: undefined;
-  Search: undefined;
+  Discover: undefined;
   WatchParty: undefined;
-  Profile: undefined;
+  Friends: undefined;
+  Activity: undefined;
 };
 
 export type HomeStackParamList = {

@@ -1,9 +1,9 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Text } from 'react-native-paper';
-import { useAuth } from '../contexts/AuthContext';
-import { SvgUri } from 'react-native-svg';
-import { images } from '../constants/assets';
+import { images } from "@constants/assets";
+import { useAuth } from "@contexts/AuthContext";
+import React from "react";
+import { View, StyleSheet } from "react-native";
+import { Text } from "react-native-paper";
+import { SvgUri } from "react-native-svg";
 
 export default function HomeScreen() {
   const { session } = useAuth();
@@ -14,7 +14,9 @@ export default function HomeScreen() {
         <SvgUri width={50} height={50} uri={images.happy} />
       </View>
       <Text variant="headlineMedium">Welcome to MoodFlix</Text>
-      {session && <Text variant="bodyLarge">Logged in as: {session.user.email}</Text>}
+      {session && (
+        <Text variant="bodyLarge">Logged in as: {session.user.email}</Text>
+      )}
     </View>
   );
 }
@@ -22,11 +24,11 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   iconContainer: {
     marginBottom: 20,
   },
-}); 
+});

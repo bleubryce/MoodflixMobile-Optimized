@@ -1,17 +1,17 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from "@contexts/AuthContext";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { NavigationContainer } from "@react-navigation/native";
+import { createStackNavigator } from "@react-navigation/stack";
 
 // Import screens
-import { LoginScreen } from '../screens/auth/LoginScreen';
-import { RegisterScreen } from '../screens/auth/RegisterScreen';
-import { HomeScreen } from '../screens/HomeScreen';
-import { ProfileScreen } from '../screens/ProfileScreen';
-import { SearchScreen } from '../screens/SearchScreen';
-import { MovieDetailScreen } from '../screens/MovieDetailScreen';
-import { IconButton } from 'react-native-paper';
+import { HomeScreen } from "@screens/HomeScreen";
+import { MovieDetailScreen } from "@screens/MovieDetailScreen";
+import { ProfileScreen } from "@screens/ProfileScreen";
+import { SearchScreen } from "@screens/SearchScreen";
+import { LoginScreen } from "@screens/auth/LoginScreen";
+import { RegisterScreen } from "@screens/auth/RegisterScreen";
+import React from "react";
+import { IconButton } from "react-native-paper";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -22,10 +22,10 @@ const TabNavigator = () => {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
-          if (route.name === 'Home') {
-            iconName = 'home';
-          } else if (route.name === 'Profile') {
-            iconName = 'account';
+          if (route.name === "Home") {
+            iconName = "home";
+          } else if (route.name === "Profile") {
+            iconName = "account";
           }
           return <IconButton icon={iconName} size={size} iconColor={color} />;
         },
@@ -59,4 +59,4 @@ const Navigation = () => {
   );
 };
 
-export default Navigation; 
+export default Navigation;

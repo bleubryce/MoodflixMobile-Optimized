@@ -1,213 +1,320 @@
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
-import Constants from 'expo-constants';
-import { Platform } from 'react-native';
-import { Movie } from '../types/movie';
-import { supabase } from '../lib/supabase';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
+import { supabase } from "../lib/supabase";
+import { CacheError, NotificationError, DatabaseError } from "../types/errors";
+import { ErrorHandler } from "../utils/errorHandler";
 
-const TRIGGER_TYPES = {
-  TIME_INTERVAL: 'timeInterval' as const,
-  DATE: 'date' as const,
-};
+const NOTIFICATION_PREFERENCES_KEY = "@notification_preferences";
+const NOTIFICATION_TOKEN_KEY = "@notification_token";
+const NOTIFICATIONS_CACHE_KEY = "@notifications";
 
-export interface NotificationPreferences {
-  recommendations: boolean;
-  moodSuggestions: boolean;
-  watchReminders: boolean;
+export interface NotificationPayload {
+  type: string;
+  [key: string]: any;
 }
 
-export class NotificationService {
-  private static readonly CHANNEL_ID = 'moodflix-notifications';
-  private static readonly CHANNEL_NAME = 'MoodFlix Notifications';
-  private static instance: NotificationService;
-  private preferences: NotificationPreferences = {
-    recommendations: true,
-    moodSuggestions: true,
-    watchReminders: true,
-  };
+export interface NotificationPreferences {
+  enabled: boolean;
+  watchPartyNotifications: boolean;
+  friendActivityNotifications: boolean;
+  movieRecommendationNotifications: boolean;
+}
+
+interface NotificationToken {
+  token: string;
+  platform: string;
+  createdAt: string;
+}
+
+interface Notification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  body: string;
+  data?: Record<string, unknown>;
+  read: boolean;
+  createdAt: string;
+}
+
+class NotificationService {
+  private static instance: NotificationService | null = null;
+  private readonly errorHandler: ErrorHandler;
 
   private constructor() {
-    this.setupNotificationHandler();
+    this.errorHandler = ErrorHandler.getInstance();
   }
 
-  public static getInstance(): NotificationService {
+  static getInstance(): NotificationService {
     if (!NotificationService.instance) {
       NotificationService.instance = new NotificationService();
     }
     return NotificationService.instance;
   }
 
-  private async setupNotificationHandler(): Promise<void> {
-    await Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
-    });
-  }
-
-  public async requestPermissions(): Promise<boolean> {
-    const { status } = await Notifications.requestPermissionsAsync();
-    return status === 'granted';
-  }
-
-  public async scheduleWatchReminder(movie: { title: string }, days: number): Promise<void> {
-    const trigger: Notifications.NotificationTriggerInput = {
-      type: 'timeInterval',
-      seconds: days * 24 * 60 * 60,
-      repeats: false,
-    } as Notifications.TimeIntervalTriggerInput;
-
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Watch Reminder',
-        body: `Don't forget to watch ${movie.title}!`,
-      },
-      trigger,
-    });
-  }
-
-  public async scheduleMoodSuggestion(movie: { title: string }): Promise<void> {
-    const trigger: Notifications.NotificationTriggerInput = {
-      type: 'timeInterval',
-      seconds: 24 * 60 * 60,
-      repeats: true,
-    } as Notifications.TimeIntervalTriggerInput;
-
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Mood Suggestion',
-        body: `Based on your mood, we recommend watching ${movie.title}!`,
-      },
-      trigger,
-    });
-  }
-
-  public async cancelAllNotifications(): Promise<void> {
-    await Notifications.cancelAllScheduledNotificationsAsync();
-  }
-
-  public getPreferences() {
-    return this.preferences;
-  }
-
-  public async updatePreferences(preferences: Partial<NotificationPreferences>): Promise<void> {
-    this.preferences = { ...this.preferences, ...preferences };
-  }
-
-  static async initialize(): Promise<void> {
-    if (!Device.isDevice) return;
-
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== 'granted') {
-      console.log('Failed to get push token for push notification!');
-      return;
-    }
-
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync(this.CHANNEL_ID, {
-        name: this.CHANNEL_NAME,
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
-      });
-    }
-
-    const token = await this.getPushToken();
-    if (token) {
-      await this.savePushToken(token);
-    }
-  }
-
-  static async getPushToken(): Promise<string | null> {
+  async getPreferences(userId: string): Promise<NotificationPreferences> {
     try {
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-      if (!projectId) {
-        throw new Error('Project ID not found');
+      // Try to get from cache first
+      const cached = await AsyncStorage.getItem(NOTIFICATION_PREFERENCES_KEY);
+      if (cached) {
+        return JSON.parse(cached);
       }
 
-      const token = await Notifications.getExpoPushTokenAsync({
-        projectId,
-      });
+      // Fallback to database
+      const { data, error } = await supabase
+        .from("notification_preferences")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
 
-      return token.data;
+      if (error) {
+        throw new DatabaseError(
+          "Failed to get notification preferences",
+          "read",
+          "notification_preferences",
+          error
+        );
+      }
+
+      // Cache the preferences
+      await AsyncStorage.setItem(
+        NOTIFICATION_PREFERENCES_KEY,
+        JSON.stringify(data)
+      );
+
+      return data;
     } catch (error) {
-      console.error('Error getting push token:', error);
-      return null;
-    }
-  }
-
-  static async savePushToken(token: string): Promise<void> {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      await supabase
-        .from('user_notifications')
-        .upsert({
-          user_id: user.id,
-          push_token: token,
-          updated_at: new Date().toISOString(),
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "notificationService",
+          action: "getPreferences",
+          additionalInfo: { userId },
         });
-    } catch (error) {
-      console.error('Error saving push token:', error);
+      }
+      throw error;
     }
   }
 
-  static async scheduleRecommendationNotification(movieTitle: string): Promise<void> {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'New Movie Recommendation',
-        body: `Check out "${movieTitle}" - it might be perfect for your current mood!`,
-        data: { type: 'recommendation' },
-      },
-      trigger: null, // Send immediately
-    });
+  async updatePreferences(
+    userId: string,
+    preferences: Partial<NotificationPreferences>
+  ): Promise<NotificationPreferences> {
+    try {
+      const { data, error } = await supabase
+        .from("notification_preferences")
+        .update(preferences)
+        .eq("user_id", userId)
+        .single();
+
+      if (error) {
+        throw new DatabaseError(
+          "Failed to update notification preferences",
+          "update",
+          "notification_preferences",
+          error
+        );
+      }
+
+      // Update cache
+      await AsyncStorage.setItem(
+        NOTIFICATION_PREFERENCES_KEY,
+        JSON.stringify(data)
+      );
+
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "notificationService",
+          action: "updatePreferences",
+          additionalInfo: { userId, preferences },
+        });
+      }
+      throw error;
+    }
   }
 
-  static async scheduleMoodBasedSuggestion(movie: Movie, mood: string) {
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Mood Match!',
-        body: `We found a ${mood} movie for you: "${movie.title}"`,
-        data: { movieId: movie.id },
-      },
-      trigger: null, // Immediate notification
-    });
+  async registerPushToken(): Promise<void> {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== "granted") {
+        const { status: newStatus } =
+          await Notifications.requestPermissionsAsync();
+        if (newStatus !== "granted") {
+          throw new NotificationError(
+            "Permission to receive notifications was denied",
+            "permission"
+          );
+        }
+      }
+
+      const token = await Notifications.getExpoPushTokenAsync();
+      const tokenData: NotificationToken = {
+        token: token.data,
+        platform: Platform.OS,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Save token to database
+      const { error } = await supabase
+        .from("notification_tokens")
+        .upsert(tokenData);
+
+      if (error) {
+        throw new DatabaseError(
+          "Failed to save notification token",
+          "create",
+          "notification_tokens",
+          error
+        );
+      }
+
+      // Cache token
+      await AsyncStorage.setItem(
+        NOTIFICATION_TOKEN_KEY,
+        JSON.stringify(tokenData)
+      );
+    } catch (error) {
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "notificationService",
+          action: "registerPushToken",
+          severity: "error",
+        });
+      }
+      throw error;
+    }
   }
 
-  public async scheduleMovieRecommendation(movie: { title: string; overview: string; id: number }, date: Date): Promise<void> {
-    const trigger: Notifications.NotificationTriggerInput = {
-      type: 'date',
-      date,
-    } as Notifications.DateTriggerInput;
+  async getNotifications(userId: string): Promise<Notification[]> {
+    try {
+      // Try to get from cache first
+      const cached = await AsyncStorage.getItem(NOTIFICATIONS_CACHE_KEY);
+      if (cached) {
+        return JSON.parse(cached);
+      }
 
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'New Movie Recommendation',
-        body: `Check out "${movie.title}" - ${movie.overview.substring(0, 100)}...`,
-        data: { movieId: movie.id },
-      },
-      trigger,
-    });
+      // Fallback to database
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        throw new DatabaseError(
+          "Failed to get notifications",
+          "read",
+          "notifications",
+          error
+        );
+      }
+
+      // Cache notifications
+      await AsyncStorage.setItem(NOTIFICATIONS_CACHE_KEY, JSON.stringify(data));
+
+      return data;
+    } catch (error) {
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "notificationService",
+          action: "getNotifications",
+          additionalInfo: { userId },
+        });
+      }
+      throw error;
+    }
   }
 
-  static async getNotificationSettings() {
-    return await Notifications.getPermissionsAsync();
+  async markAsRead(notificationId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read: true })
+        .eq("id", notificationId);
+
+      if (error) {
+        throw new DatabaseError(
+          "Failed to mark notification as read",
+          "update",
+          "notifications",
+          error
+        );
+      }
+
+      // Update cache
+      const cached = await AsyncStorage.getItem(NOTIFICATIONS_CACHE_KEY);
+      if (cached) {
+        const notifications: Notification[] = JSON.parse(cached);
+        const updated = notifications.map((n) =>
+          n.id === notificationId ? { ...n, read: true } : n
+        );
+        await AsyncStorage.setItem(
+          NOTIFICATIONS_CACHE_KEY,
+          JSON.stringify(updated)
+        );
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "notificationService",
+          action: "markAsRead",
+          additionalInfo: { notificationId },
+        });
+      }
+      throw error;
+    }
   }
 
-  static async updateNotificationSettings(settings: Notifications.NotificationPermissionsStatus) {
-    // Implement settings update logic here
-    // This might involve updating user preferences in your backend
+  async clearCache(): Promise<void> {
+    try {
+      await Promise.all([
+        AsyncStorage.removeItem(NOTIFICATION_PREFERENCES_KEY),
+        AsyncStorage.removeItem(NOTIFICATION_TOKEN_KEY),
+        AsyncStorage.removeItem(NOTIFICATIONS_CACHE_KEY),
+      ]);
+    } catch (error) {
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "notificationService",
+          action: "clearCache",
+          severity: "warning",
+        });
+      }
+      throw error;
+    }
+  }
+
+  async cancelAllNotifications(): Promise<void> {
+    // Implementation
+  }
+
+  async sendNotification(
+    userId: string,
+    title: string,
+    body: string,
+    payload?: NotificationPayload
+  ): Promise<void> {
+    try {
+      // Implementation for sending notifications
+      // This would typically integrate with a push notification service
+    } catch (error) {
+      if (error instanceof Error) {
+        const notificationError = new NotificationError(
+          "Failed to send notification",
+          "delivery"
+        );
+        await this.errorHandler.handleError(notificationError, {
+          componentName: "NotificationService",
+          action: "sendNotification",
+          additionalInfo: { userId, title }
+        });
+        throw notificationError;
+      }
+      throw error;
+    }
   }
 }
 
-export const notificationService = NotificationService.getInstance(); 
+export default NotificationService;

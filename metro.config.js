@@ -1,29 +1,37 @@
-const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
+const { getDefaultConfig } = require('@react-native/metro-config');
+const path = require('path');
 
-const config = {
-  transformer: {
-    getTransformOptions: async () => ({
-      transform: {
-        experimentalImportSupport: false,
-        inlineRequires: true,
-      },
-    }),
-  },
-  resolver: {
-    assetExts: [
-      // Images
-      'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg',
-      // Fonts
-      'ttf', 'otf', 'woff', 'woff2',
-      // Other
-      'mp4', 'mp3', 'wav', 'webm', 'json'
-    ],
-    sourceExts: ['jsx', 'js', 'ts', 'tsx', 'json', 'mjs'],
-  },
-  watchFolders: [
-    `${__dirname}/assets`,
-    `${__dirname}/src`
-  ],
-};
+module.exports = (() => {
+  const config = getDefaultConfig(__dirname);
 
-module.exports = mergeConfig(getDefaultConfig(__dirname), config); 
+  const { transformer, resolver } = config;
+
+  config.transformer = {
+    ...transformer,
+    babelTransformerPath: require.resolve('react-native-svg-transformer')
+  };
+
+  config.resolver = {
+    ...resolver,
+    assetExts: resolver.assetExts.filter(ext => ext !== 'svg').concat(['mp4', 'mp3', 'wav', 'webm']),
+    sourceExts: [...resolver.sourceExts, 'svg'],
+    extraNodeModules: {
+      '@': path.resolve(__dirname, 'src'),
+      '@components': path.resolve(__dirname, 'src/components'),
+      '@screens': path.resolve(__dirname, 'src/screens'),
+      '@features': path.resolve(__dirname, 'src/features'),
+      '@contexts': path.resolve(__dirname, 'src/contexts'),
+      '@hooks': path.resolve(__dirname, 'src/hooks'),
+      '@services': path.resolve(__dirname, 'src/services'),
+      '@theme': path.resolve(__dirname, 'src/theme'),
+      '@types': path.resolve(__dirname, 'src/types'),
+      '@utils': path.resolve(__dirname, 'src/utils'),
+      '@lib': path.resolve(__dirname, 'src/lib'),
+      '@config': path.resolve(__dirname, 'src/config'),
+      '@constants': path.resolve(__dirname, 'src/constants'),
+      '@navigation': path.resolve(__dirname, 'src/navigation')
+    }
+  };
+
+  return config;
+})(); 

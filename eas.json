@@ -1,21 +1,57 @@
 {
+  "cli": {
+    "version": ">= 5.9.1"
+  },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "APP_ENV": "development",
+        "ENABLE_DARK_MODE": "true"
+      },
       "ios": {
-        "simulator": true
+        "simulator": true,
+        "image": "latest"
+      },
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
       }
     },
     "preview": {
-      "distribution": "internal"
-    },
-    "production": {
+      "distribution": "internal",
+      "env": {
+        "APP_ENV": "staging",
+        "ENABLE_DARK_MODE": "true"
+      },
       "ios": {
-        "buildType": "app-store"
+        "resourceClass": "m-medium"
       },
       "android": {
         "buildType": "apk"
+      }
+    },
+    "production": {
+      "env": {
+        "APP_ENV": "production",
+        "ENABLE_DARK_MODE": "true"
+      },
+      "ios": {
+        "resourceClass": "m-medium",
+        "buildType": "app-store"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "your-apple-id@example.com",
+        "ascAppId": "your-app-store-connect-app-id",
+        "appleTeamId": "your-apple-team-id"
       }
     }
   }

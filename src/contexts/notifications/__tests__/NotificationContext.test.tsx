@@ -1,12 +1,13 @@
-import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { render, act, fireEvent } from '@testing-library/react-native';
-import { NotificationProvider, useNotifications } from '../NotificationContext';
-import { NotificationService } from '../../../services/notificationService';
-import { useAuth } from '../../auth/AuthContext';
+import { render, act, fireEvent } from "@testing-library/react-native";
+import React from "react";
+import { View, Text, TouchableOpacity } from "react-native";
 
-jest.mock('../../auth/AuthContext');
-jest.mock('../../../services/notificationService');
+import { NotificationService } from "../../../services/notificationService";
+import { useAuth } from "../../auth/AuthContext";
+import { NotificationProvider, useNotifications } from "../NotificationContext";
+
+jest.mock("../../auth/AuthContext");
+jest.mock("../../../services/notificationService");
 
 const TestComponent = () => {
   const { preferences, updatePreferences } = useNotifications();
@@ -23,10 +24,10 @@ const TestComponent = () => {
   );
 };
 
-describe('NotificationContext', () => {
+describe("NotificationContext", () => {
   const mockUser = {
-    id: 'user123',
-    email: 'test@example.com',
+    id: "user123",
+    email: "test@example.com",
   };
 
   const mockPreferences = {
@@ -37,42 +38,49 @@ describe('NotificationContext', () => {
 
   beforeEach(() => {
     (useAuth as jest.Mock).mockReturnValue({ user: mockUser });
-    (NotificationService.getPreferences as jest.Mock).mockResolvedValue(mockPreferences);
+    (NotificationService.getPreferences as jest.Mock).mockResolvedValue(
+      mockPreferences,
+    );
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('provides notification preferences', async () => {
+  it("provides notification preferences", async () => {
     const { getByTestId } = render(
       <NotificationProvider>
         <TestComponent />
-      </NotificationProvider>
+      </NotificationProvider>,
     );
 
     await act(async () => {
-      expect(getByTestId('preferences').props.children).toBe(JSON.stringify(mockPreferences));
+      expect(getByTestId("preferences").props.children).toBe(
+        JSON.stringify(mockPreferences),
+      );
     });
   });
 
-  it('updates notification preferences', async () => {
+  it("updates notification preferences", async () => {
     const { getByTestId } = render(
       <NotificationProvider>
         <TestComponent />
-      </NotificationProvider>
+      </NotificationProvider>,
     );
 
     await act(async () => {
-      fireEvent.press(getByTestId('update-button'));
+      fireEvent.press(getByTestId("update-button"));
     });
 
-    expect(NotificationService.updatePreferences).toHaveBeenCalledWith(mockUser.id, {
-      recommendations: false,
-    });
+    expect(NotificationService.updatePreferences).toHaveBeenCalledWith(
+      mockUser.id,
+      {
+        recommendations: false,
+      },
+    );
   });
 
-  it('throws error when used outside provider', () => {
+  it("throws error when used outside provider", () => {
     const TestComponent = () => {
       try {
         useNotifications();
@@ -83,29 +91,29 @@ describe('NotificationContext', () => {
     };
 
     const { getByTestId } = render(<TestComponent />);
-    expect(getByTestId('error').props.children).toBe(
-      'useNotifications must be used within a NotificationProvider'
+    expect(getByTestId("error").props.children).toBe(
+      "useNotifications must be used within a NotificationProvider",
     );
   });
 
-  it('handles errors when updating preferences', async () => {
+  it("handles errors when updating preferences", async () => {
     (NotificationService.updatePreferences as jest.Mock).mockRejectedValue(
-      new Error('Update failed')
+      new Error("Update failed"),
     );
 
     const { getByTestId } = render(
       <NotificationProvider>
         <TestComponent />
-      </NotificationProvider>
+      </NotificationProvider>,
     );
 
     await act(async () => {
-      fireEvent.press(getByTestId('update-button'));
+      fireEvent.press(getByTestId("update-button"));
     });
 
     expect(console.error).toHaveBeenCalledWith(
-      'Error updating notification preferences:',
-      expect.any(Error)
+      "Error updating notification preferences:",
+      expect.any(Error),
     );
   });
-}); 
+});

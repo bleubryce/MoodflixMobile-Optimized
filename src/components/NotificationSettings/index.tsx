@@ -1,8 +1,7 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { List, Switch, Divider } from 'react-native-paper';
-import { useNotifications } from '../../contexts/notifications/NotificationContext';
-import { useTheme } from 'react-native-paper';
+import { useNotifications } from "@contexts/notifications/NotificationContext";
+import React from "react";
+import { View, StyleSheet } from "react-native";
+import { List, Switch, Divider, useTheme } from "react-native-paper";
 
 export const NotificationSettings: React.FC = () => {
   const { preferences, updatePreferences } = useNotifications();
@@ -15,7 +14,7 @@ export const NotificationSettings: React.FC = () => {
         [key]: !preferences[key],
       });
     } catch (error) {
-      console.error('Error updating notification preferences:', error);
+      console.error("Error updating notification preferences:", error);
     }
   };
 
@@ -27,7 +26,7 @@ export const NotificationSettings: React.FC = () => {
           right={() => (
             <Switch
               value={preferences.recommendations}
-              onValueChange={() => handleToggle('recommendations')}
+              onValueChange={() => handleToggle("recommendations")}
               testID="recommendations-switch"
             />
           )}
@@ -38,7 +37,7 @@ export const NotificationSettings: React.FC = () => {
           right={() => (
             <Switch
               value={preferences.moodSuggestions}
-              onValueChange={() => handleToggle('moodSuggestions')}
+              onValueChange={() => handleToggle("moodSuggestions")}
               testID="mood-suggestions-switch"
             />
           )}
@@ -49,7 +48,7 @@ export const NotificationSettings: React.FC = () => {
           right={() => (
             <Switch
               value={preferences.watchReminders}
-              onValueChange={() => handleToggle('watchReminders')}
+              onValueChange={() => handleToggle("watchReminders")}
               testID="watch-reminders-switch"
             />
           )}
@@ -61,12 +60,12 @@ export const NotificationSettings: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     flex: 1,
   },
   listItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-}); 
+});

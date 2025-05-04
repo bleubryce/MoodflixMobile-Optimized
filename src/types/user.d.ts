@@ -13,7 +13,7 @@ export interface User {
 }
 
 export interface UserPreferences {
-  theme: 'light' | 'dark' | 'system';
+  theme: "light" | "dark" | "system";
   notifications: {
     email: boolean;
     push: boolean;
@@ -43,14 +43,14 @@ export interface UserActivity {
   createdAt: string;
 }
 
-export type UserActivityType = 
-  | 'watchlist_add'
-  | 'watchlist_remove'
-  | 'watched'
-  | 'review'
-  | 'rating'
-  | 'watch_party_join'
-  | 'watch_party_create';
+export type UserActivityType =
+  | "watchlist_add"
+  | "watchlist_remove"
+  | "watched"
+  | "review"
+  | "rating"
+  | "watch_party_join"
+  | "watch_party_create";
 
 export interface UserUpdateData {
   username?: string;
@@ -64,6 +64,6 @@ export interface UserSearchParams {
   query?: string;
   page?: number;
   limit?: number;
-  sortBy?: 'username' | 'createdAt';
-  sortOrder?: 'asc' | 'desc';
-} 
+  sortBy?: "username" | "createdAt";
+  sortOrder?: "asc" | "desc";
+}

@@ -1,18 +1,19 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="splashBackground">#1C1C1E</color>
-    <color name="primary">#0A84FF</color>
-    <color name="secondary">#5E5CE6</color>
-    <color name="accent">#FF9500</color>
-    <color name="error">#FF3B30</color>
-    <color name="success">#34C759</color>
-    <color name="warning">#FF9500</color>
-    <color name="info">#5AC8FA</color>
-    <color name="background">#1C1C1E</color>
-    <color name="surface">#2C2C2E</color>
-    <color name="onPrimary">#FFFFFF</color>
-    <color name="onSecondary">#FFFFFF</color>
-    <color name="onBackground">#FFFFFF</color>
-    <color name="onSurface">#FFFFFF</color>
-    <color name="onError">#FFFFFF</color>
+  <color name="splashBackground">#1C1C1E</color>
+  <color name="primary">#0A84FF</color>
+  <color name="secondary">#5E5CE6</color>
+  <color name="accent">#FF9500</color>
+  <color name="error">#FF3B30</color>
+  <color name="success">#34C759</color>
+  <color name="warning">#FF9500</color>
+  <color name="info">#5AC8FA</color>
+  <color name="background">#1C1C1E</color>
+  <color name="surface">#2C2C2E</color>
+  <color name="onPrimary">#FFFFFF</color>
+  <color name="onSecondary">#FFFFFF</color>
+  <color name="onBackground">#FFFFFF</color>
+  <color name="onSurface">#FFFFFF</color>
+  <color name="onError">#FFFFFF</color>
+  <color name="colorPrimary">#023c69</color>
+  <color name="colorPrimaryDark">#ffffff</color>
 </resources>

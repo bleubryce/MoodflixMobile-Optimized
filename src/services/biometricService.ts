@@ -1,32 +1,52 @@
-import * as LocalAuthentication from 'expo-local-authentication';
-import * as SecureStore from 'expo-secure-store';
-import { supabase } from '../lib/supabase';
+import { supabase } from "../lib/supabase";
+import * as LocalAuthentication from "expo-local-authentication";
+import * as SecureStore from "expo-secure-store";
+import { AuthenticationError, CacheError } from "../types/errors";
+import { ErrorHandler } from "../utils/errorHandler";
 
 export interface BiometricAuthResult {
   success: boolean;
   error?: string;
 }
 
-export class BiometricService {
-  private static readonly BIOMETRIC_KEY = 'biometric_auth_enabled';
-  private static readonly AUTH_TOKEN_KEY = 'auth_token';
+export class BiometricServiceImpl {
+  private static instance: BiometricServiceImpl | null = null;
+  private static readonly BIOMETRIC_KEY = "biometric_auth_enabled";
+  private static readonly AUTH_TOKEN_KEY = "auth_token";
+  private readonly errorHandler: ErrorHandler;
 
-  static async isBiometricAvailable(): Promise<boolean> {
+  private constructor() {
+    this.errorHandler = ErrorHandler.getInstance();
+  }
+
+  static getInstance(): BiometricServiceImpl {
+    if (!BiometricServiceImpl.instance) {
+      BiometricServiceImpl.instance = new BiometricServiceImpl();
+    }
+    return BiometricServiceImpl.instance;
+  }
+
+  async isBiometricAvailable(): Promise<boolean> {
     try {
       const compatible = await LocalAuthentication.hasHardwareAsync();
       const enrolled = await LocalAuthentication.isEnrolledAsync();
       return compatible && enrolled;
     } catch (error) {
-      console.error('Error checking biometric availability:', error);
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "BiometricService",
+          action: "isBiometricAvailable",
+        });
+      }
       return false;
     }
   }
 
-  static async authenticate(): Promise<BiometricAuthResult> {
+  async authenticate(): Promise<BiometricAuthResult> {
     try {
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Authenticate to access MoodFlix',
-        fallbackLabel: 'Use Password',
+        promptMessage: "Authenticate to access MoodFlix",
+        fallbackLabel: "Use Password",
       });
 
       if (result.success) {
@@ -35,61 +55,117 @@ export class BiometricService {
 
       return {
         success: false,
-        error: result.error || 'Authentication failed',
+        error: result.error || "Authentication failed",
       };
     } catch (error) {
-      console.error('Error during biometric authentication:', error);
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "BiometricService",
+          action: "authenticate",
+        });
+      }
       return {
         success: false,
-        error: 'An unexpected error occurred',
+        error: "An unexpected error occurred",
       };
     }
   }
 
-  static async isBiometricEnabled(): Promise<boolean> {
+  async isBiometricEnabled(): Promise<boolean> {
     try {
-      const enabled = await SecureStore.getItemAsync(this.BIOMETRIC_KEY);
-      return enabled === 'true';
+      const enabled = await SecureStore.getItemAsync(BiometricServiceImpl.BIOMETRIC_KEY);
+      return enabled === "true";
     } catch (error) {
-      console.error('Error checking biometric status:', error);
+      if (error instanceof Error) {
+        await this.errorHandler.handleError(error, {
+          componentName: "BiometricService",
+          action: "isBiometricEnabled",
+        });
+      }
       return false;
     }
   }
 
-  static async enableBiometric(): Promise<void> {
+  async enableBiometric(): Promise<void> {
     try {
-      await SecureStore.setItemAsync(this.BIOMETRIC_KEY, 'true');
+      await SecureStore.setItemAsync(BiometricServiceImpl.BIOMETRIC_KEY, "true");
     } catch (error) {
-      console.error('Error enabling biometric:', error);
-      throw new Error('Failed to enable biometric authentication');
+      if (error instanceof Error) {
+        const authError = new AuthenticationError(
+          "Failed to enable biometric authentication",
+          "biometric",
+          "enable"
+        );
+        await this.errorHandler.handleError(authError, {
+          componentName: "BiometricService",
+          action: "enableBiometric",
+        });
+        throw authError;
+      }
+      throw error;
     }
   }
 
-  static async disableBiometric(): Promise<void> {
+  async disableBiometric(): Promise<void> {
     try {
-      await SecureStore.deleteItemAsync(this.BIOMETRIC_KEY);
-      await SecureStore.deleteItemAsync(this.AUTH_TOKEN_KEY);
+      await SecureStore.deleteItemAsync(BiometricServiceImpl.BIOMETRIC_KEY);
+      await SecureStore.deleteItemAsync(BiometricServiceImpl.AUTH_TOKEN_KEY);
     } catch (error) {
-      console.error('Error disabling biometric:', error);
-      throw new Error('Failed to disable biometric authentication');
+      if (error instanceof Error) {
+        const authError = new AuthenticationError(
+          "Failed to disable biometric authentication",
+          "biometric",
+          "disable"
+        );
+        await this.errorHandler.handleError(authError, {
+          componentName: "BiometricService",
+          action: "disableBiometric",
+        });
+        throw authError;
+      }
+      throw error;
     }
   }
 
-  static async storeAuthToken(token: string): Promise<void> {
+  async storeAuthToken(token: string): Promise<void> {
     try {
-      await SecureStore.setItemAsync(this.AUTH_TOKEN_KEY, token);
+      await SecureStore.setItemAsync(BiometricServiceImpl.AUTH_TOKEN_KEY, token);
     } catch (error) {
-      console.error('Error storing auth token:', error);
-      throw new Error('Failed to store authentication token');
+      if (error instanceof Error) {
+        const cacheError = new CacheError(
+          "Failed to store authentication token",
+          BiometricServiceImpl.AUTH_TOKEN_KEY,
+          "write"
+        );
+        await this.errorHandler.handleError(cacheError, {
+          componentName: "BiometricService",
+          action: "storeAuthToken",
+        });
+        throw cacheError;
+      }
+      throw error;
     }
   }
 
-  static async getAuthToken(): Promise<string | null> {
+  async getAuthToken(): Promise<string | null> {
     try {
-      return await SecureStore.getItemAsync(this.AUTH_TOKEN_KEY);
+      return await SecureStore.getItemAsync(BiometricServiceImpl.AUTH_TOKEN_KEY);
     } catch (error) {
-      console.error('Error retrieving auth token:', error);
+      if (error instanceof Error) {
+        const cacheError = new CacheError(
+          "Failed to retrieve authentication token",
+          BiometricServiceImpl.AUTH_TOKEN_KEY,
+          "read"
+        );
+        await this.errorHandler.handleError(cacheError, {
+          componentName: "BiometricService",
+          action: "getAuthToken",
+          severity: "warning"
+        });
+      }
       return null;
     }
   }
-} 
+}
+
+export const BiometricService = BiometricServiceImpl;

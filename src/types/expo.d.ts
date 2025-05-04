@@ -1,10 +1,10 @@
-declare module 'expo-secure-store' {
+declare module "expo-secure-store" {
   export async function getItemAsync(key: string): Promise<string | null>;
   export async function setItemAsync(key: string, value: string): Promise<void>;
   export async function deleteItemAsync(key: string): Promise<void>;
 }
 
-declare module 'expo-device' {
+declare module "expo-device" {
   export const isDevice: boolean;
   export const brand: string;
   export const manufacturer: string;
@@ -25,7 +25,7 @@ declare module 'expo-device' {
   export const osBuildFingerprint: string | null;
 }
 
-declare module 'expo-local-authentication' {
+declare module "expo-local-authentication" {
   export enum AuthenticationType {
     FINGERPRINT = 1,
     FACIAL_RECOGNITION = 2,
@@ -38,7 +38,9 @@ declare module 'expo-local-authentication' {
 
   export async function hasHardwareAsync(): Promise<boolean>;
   export async function isEnrolledAsync(): Promise<boolean>;
-  export async function supportedAuthenticationTypesAsync(): Promise<AuthenticationType[]>;
+  export async function supportedAuthenticationTypesAsync(): Promise<
+    AuthenticationType[]
+  >;
   export async function authenticateAsync(options?: {
     promptMessage?: string;
     fallbackLabel?: string;
@@ -47,7 +49,7 @@ declare module 'expo-local-authentication' {
   }): Promise<LocalAuthenticationResult>;
 }
 
-declare module 'expo-av' {
+declare module "expo-av" {
   export interface AVPlaybackStatus {
     isLoaded: boolean;
     isPlaying: boolean;
@@ -67,7 +69,7 @@ declare module 'expo-av' {
   export class Video extends React.Component<{
     source: { uri: string } | number;
     style?: any;
-    resizeMode?: 'contain' | 'cover' | 'stretch';
+    resizeMode?: "contain" | "cover" | "stretch";
     onPlaybackStatusUpdate?: (status: AVPlaybackStatus) => void;
     onLoad?: (status: AVPlaybackStatus) => void;
     onError?: (error: string) => void;
@@ -101,4 +103,4 @@ declare module 'expo-av' {
     presentFullscreenPlayer: () => Promise<void>;
     dismissFullscreenPlayer: () => Promise<void>;
   }
-} 
+}

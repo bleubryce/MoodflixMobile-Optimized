@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList } from 'react-native';
-import { Text, ActivityIndicator, useTheme } from 'react-native-paper';
-import { TMDBMovie } from '../../types/tmdb';
-import { MoodService, Mood } from '../../services/moodService';
-import { MovieCard } from '../MovieCard';
-import { useOffline } from '../../hooks/useOffline';
+import { useOffline } from "@hooks/useOffline";
+import { MoodService, Mood } from "@services/moodService";
+import { TMDBMovie } from "@types/tmdb";
+import React, { useState, useEffect } from "react";
+import { View, StyleSheet, FlatList } from "react-native";
+import { Text, ActivityIndicator, useTheme } from "react-native-paper";
+
+import { MovieCard } from "../MovieCard";
 
 interface MoodRecommendationsProps {
   mood: Mood;
@@ -29,8 +30,8 @@ export const MoodRecommendations: React.FC<MoodRecommendationsProps> = ({
         const recommendations = await MoodService.getRecommendations(mood);
         setMovies(recommendations);
       } catch (err) {
-        setError('Failed to load recommendations');
-        console.error('Error loading recommendations:', err);
+        setError("Failed to load recommendations");
+        console.error("Error loading recommendations:", err);
       } finally {
         setLoading(false);
       }
@@ -92,21 +93,21 @@ export const MoodRecommendations: React.FC<MoodRecommendationsProps> = ({
 const styles = StyleSheet.create({
   centerContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 16,
   },
   listContainer: {
     padding: 16,
   },
   errorText: {
-    color: 'red',
-    textAlign: 'center',
+    color: "red",
+    textAlign: "center",
     marginBottom: 8,
   },
   offlineText: {
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
     marginTop: 8,
   },
-}); 
+});
