@@ -1,7 +1,7 @@
 import { supabase } from "../lib/supabase";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
-import { AuthenticationError, CacheError } from "../types/errors";
+import { AuthenticationError, CacheError } from "@errors/errors";
 import { ErrorHandler } from "../utils/errorHandler";
 
 export interface BiometricAuthResult {

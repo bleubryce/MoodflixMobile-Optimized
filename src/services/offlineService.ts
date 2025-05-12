@@ -1,12 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
-import { CacheError, NetworkError } from "../types/errors";
+import { CacheError, NetworkError, AuthenticationError } from "@errors/errors";
 import { ErrorHandler } from "../utils/errorHandler";
 import { Movie } from "../types/movie";
 import { WatchParty } from "../types/watchParty";
 import { NotificationPreferences } from "../types/notifications";
 import { MoodHistory } from "../types/mood";
-import { AuthenticationError } from "../types/errors";
 import { supabase } from "../lib/supabase";
 
 interface CacheConfig {
@@ -24,6 +23,20 @@ interface PendingSync<T> {
   entityType: string;
   data: T;
   timestamp: number;
+}
+
+class CacheNotConfiguredError extends Error {
+  constructor(entityType: string) {
+    super(`No cache configuration for entity type: ${entityType}`);
+    this.name = "CacheNotConfiguredError";
+  }
+}
+
+class UnknownEntityError extends Error {
+  constructor(entityType: string) {
+    super(`Unknown entity type for sync: ${entityType}`);
+    this.name = "UnknownEntityError";
+  }
 }
 
 class OfflineServiceImpl {
@@ -144,7 +157,7 @@ class OfflineServiceImpl {
   ): Promise<void> {
     const config = OfflineServiceImpl.CACHE_CONFIG[entityType];
     if (!config) {
-      throw new Error(`No cache configuration for entity type: ${entityType}`);
+      throw new CacheNotConfiguredError(entityType);
     }
 
     const entry: CacheEntry<T> = {
@@ -180,9 +193,7 @@ class OfflineServiceImpl {
       const config = OfflineServiceImpl.CACHE_CONFIG[entityType];
 
       if (!config) {
-        throw new Error(
-          `No cache configuration for entity type: ${entityType}`,
-        );
+        throw new CacheNotConfiguredError(entityType);
       }
 
       // Check if cache is still valid
@@ -254,14 +265,7 @@ class OfflineServiceImpl {
             );
             break;
           default:
-            await this.errorHandler.handleError(
-              new Error(`Unknown entity type for sync: ${sync.entityType}`),
-              {
-                componentName: "OfflineService",
-                action: "syncPendingChanges",
-                additionalInfo: { sync },
-              }
-            );
+            throw new UnknownEntityError(sync.entityType);
         }
       } catch (error) {
         await this.errorHandler.handleError(

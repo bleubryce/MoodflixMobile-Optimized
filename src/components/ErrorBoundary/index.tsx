@@ -2,11 +2,8 @@ import NetInfo from "@react-native-community/netinfo";
 import React, { Component, ReactNode } from "react";
 import { View, Text, Button, StyleSheet } from "react-native";
 
-import {
-  NetworkError,
-  ApiError,
-  CacheError,
-} from "../../services/movieService";
+import { NetworkError, ApiError, CacheError } from "@errors/errors";
+import { ErrorHandler } from "@utils/errorHandler";
 
 interface Props {
   children: ReactNode;
@@ -43,7 +40,11 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: any) {
-    console.error("Uncaught error:", error, errorInfo);
+    ErrorHandler.getInstance().handleError(error, {
+      componentName: "ErrorBoundary",
+      action: "componentDidCatch",
+      additionalInfo: errorInfo,
+    });
     this.props.onError?.(error);
   }
 

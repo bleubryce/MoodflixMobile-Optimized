@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { createClient } from "@supabase/supabase-js";
 import { TMDBMovie, TMDBMovieDetails } from "../types/tmdb";
-import { NetworkError, ApiError, CacheError, DatabaseError } from "../types/errors";
+import { NetworkError, ApiError, CacheError, DatabaseError } from "@errors/errors";
 import { ErrorHandler } from "../utils/errorHandler";
 import { ApiResponse } from "../types";
 

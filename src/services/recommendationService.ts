@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { CacheError, DatabaseError, AuthenticationError, ApiError } from "../types/errors";
+import { CacheError, DatabaseError, AuthenticationError, ApiError } from "@errors/errors";
 import { ErrorHandler } from "../utils/errorHandler";
 import { moodService } from "./moodService";
 import { Movie, movieService } from "./movieService";

@@ -1,7 +1,7 @@
 import { supabase } from "../lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ActivityItem, ActivityType } from "../types/activity";
-import { AuthenticationError, DatabaseError, CacheError } from "../types/errors";
+import { AuthenticationError, DatabaseError, CacheError } from "@errors/errors";
 import { ErrorHandler } from "../utils/errorHandler";
 
 const ACTIVITY_CACHE_KEY = "@activity_feed";

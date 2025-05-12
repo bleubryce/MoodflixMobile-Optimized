@@ -13,6 +13,7 @@
     "postinstall": "npx pod-install ios"
   },
   "dependencies": {
+    "@expo/metro-config": "~0.17.1",
     "@react-native-async-storage/async-storage": "1.21.0",
     "@react-native-community/netinfo": "11.1.0",
     "@react-native/metro-config": "0.72.11",
@@ -31,6 +32,7 @@
     "expo-linking": "~6.2.2",
     "expo-notifications": "~0.27.8",
     "expo-screen-orientation": "~6.4.1",
+    "expo-secure-store": "12.8.1",
     "expo-status-bar": "~1.11.1",
     "expo-updates": "~0.24.8",
     "getenv": "^1.0.0",
@@ -41,7 +43,7 @@
     "metro-runtime": "0.80.4",
     "metro-source-map": "0.80.4",
     "react": "18.2.0",
-    "react-native": "^0.73.6",
+    "react-native": "0.73.6",
     "react-native-dotenv": "^3.4.11",
     "react-native-gesture-handler": "~2.14.0",
     "react-native-paper": "^5.13.5",
@@ -52,8 +54,7 @@
     "react-native-svg": "14.1.0",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-vector-icons": "^10.2.0",
-    "socket.io-client": "^4.7.2",
-    "@expo/metro-config": "~0.17.1"
+    "socket.io-client": "^4.7.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

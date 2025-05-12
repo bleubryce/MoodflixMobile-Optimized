@@ -2,13 +2,7 @@ import { supabase } from "@config/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { TMDBMovie } from "../types/tmdb";
 import { WatchPartyState, ChatMessage } from "../types/watch-party";
-import { 
-  AuthenticationError, 
-  DatabaseError, 
-  NetworkError, 
-  CacheError,
-  SubscriptionError 
-} from "../types/errors";
+import { AuthenticationError, DatabaseError, NetworkError, CacheError, SubscriptionError } from "@errors/errors";
 import { ErrorHandler } from "../utils/errorHandler";
 import { getMovieDetails } from "./movieService";
 import NotificationService from "./notificationService";
@@ -48,6 +42,7 @@ export interface WatchPartyParticipant {
   joinedAt: string;
   lastSeen: string;
   status: ParticipantStatus;
+  mood?: string;
 }
 
 interface CacheItem<T> {
@@ -67,6 +62,7 @@ interface DatabaseParticipant {
   joined_at: string;
   last_seen: string;
   status: string;
+  mood?: string;
 }
 
 interface DatabaseWatchParty {
@@ -383,6 +379,7 @@ class WatchPartyServiceImpl {
               joinedAt: participant.joined_at,
               lastSeen: participant.last_seen,
               status: participant.status as ParticipantStatus,
+              mood: participant.mood,
             })),
             currentTime: party.current_time || 0,
             isPlaying: party.is_playing || false,
@@ -560,8 +557,12 @@ class WatchPartyServiceImpl {
         return updatedParty;
       }
     } catch (error) {
-      console.error("Error joining watch party:", error);
-      throw this.handleError(error);
+      await this.errorHandler.handleError(error instanceof Error ? error : new Error(String(error)), {
+        componentName: "WatchPartyService",
+        action: "joinWatchParty",
+        additionalInfo: { partyId }
+      });
+      throw error;
     }
   }
 
@@ -585,8 +586,11 @@ class WatchPartyServiceImpl {
 
       if (error) throw error;
     } catch (error) {
-      console.error("Error updating playback state:", error);
-      throw this.handleError(error);
+      await this.errorHandler.handleError(error instanceof Error ? error : new Error(String(error)), {
+        componentName: "WatchPartyService",
+        action: "updatePlaybackState",
+        additionalInfo: { isPlaying, currentTime }
+      });
     }
   }
 
@@ -623,8 +627,11 @@ class WatchPartyServiceImpl {
 
       if (error) throw error;
     } catch (error) {
-      console.error("Error sending chat message:", error);
-      throw this.handleError(error);
+      await this.errorHandler.handleError(error instanceof Error ? error : new Error(String(error)), {
+        componentName: "WatchPartyService",
+        action: "sendChatMessage",
+        additionalInfo: { content }
+      });
     }
   }
 
@@ -658,7 +665,11 @@ class WatchPartyServiceImpl {
 
       if (error) throw error;
     } catch (error) {
-      console.error("Error adding system message:", error);
+      await this.errorHandler.handleError(error instanceof Error ? error : new Error(String(error)), {
+        componentName: "WatchPartyService",
+        action: "addSystemMessage",
+        additionalInfo: { content }
+      });
     }
   }
 
@@ -693,7 +704,10 @@ class WatchPartyServiceImpl {
 
       this.cleanup();
     } catch (error) {
-      console.error("Error leaving watch party:", error);
+      await this.errorHandler.handleError(error instanceof Error ? error : new Error(String(error)), {
+        componentName: "WatchPartyService",
+        action: "leaveWatchParty"
+      });
       this.cleanup();
     }
   }
@@ -910,18 +924,24 @@ class WatchPartyServiceImpl {
       }
 
       this.currentParty = party;
-      this.emitStateChange();
+      await this.emitStateChange();
     } catch (error) {
-      console.error("Error syncing state:", error);
-      this.handleSyncError(error);
+      await this.handleSyncError(error);
     }
   }
 
-  private handleSyncError(error: Error | unknown): void {
+  private async handleSyncError(error: Error | unknown): Promise<void> {
     this.reconnectAttempts++;
     if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
       this.cleanup();
-      console.error("Failed to sync watch party state after multiple attempts");
+      await this.errorHandler.handleError(
+        new Error("Failed to sync watch party state after multiple attempts"),
+        {
+          componentName: "WatchPartyService",
+          action: "handleSyncError",
+          severity: "error"
+        }
+      );
     }
   }
 
@@ -939,16 +959,19 @@ class WatchPartyServiceImpl {
     this.stateUpdateCallbacks = [];
   }
 
-  private emitStateChange(): void {
+  private async emitStateChange(): Promise<void> {
     if (!this.currentParty) return;
 
-    this.stateUpdateCallbacks.forEach((callback) => {
+    for (const callback of this.stateUpdateCallbacks) {
       try {
-        callback(this.currentParty!);
+        await callback(this.currentParty!);
       } catch (error) {
-        console.error("Error in watch party state update callback:", error);
+        await this.errorHandler.handleError(error instanceof Error ? error : new Error(String(error)), {
+          componentName: "WatchPartyService",
+          action: "emitStateChange"
+        });
       }
-    });
+    }
   }
 
   private handleError(error: any): WatchPartyError {
@@ -1064,6 +1087,44 @@ class WatchPartyServiceImpl {
           additionalInfo: { state }
         }
       );
+    }
+  }
+
+  async setParticipantMood(partyId: string, mood: string): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("User not authenticated");
+    try {
+      const { error } = await supabase
+        .from("watch_party_participants")
+        .update({ mood })
+        .eq("party_id", partyId)
+        .eq("user_id", user.id);
+      if (error) throw error;
+    } catch (error) {
+      await this.errorHandler.handleError(error instanceof Error ? error : new Error(String(error)), {
+        componentName: "WatchPartyService",
+        action: "setParticipantMood",
+        additionalInfo: { partyId, mood }
+      });
+      throw error;
+    }
+  }
+
+  async getParticipantMoods(partyId: string): Promise<{ userId: string; mood: string }[]> {
+    try {
+      const { data, error } = await supabase
+        .from("watch_party_participants")
+        .select("user_id, mood")
+        .eq("party_id", partyId);
+      if (error) throw error;
+      return (data || []).map((row: any) => ({ userId: row.user_id, mood: row.mood }));
+    } catch (error) {
+      await this.errorHandler.handleError(error instanceof Error ? error : new Error(String(error)), {
+        componentName: "WatchPartyService",
+        action: "getParticipantMoods",
+        additionalInfo: { partyId }
+      });
+      throw error;
     }
   }
 }

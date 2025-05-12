@@ -4,14 +4,7 @@ import * as Sentry from "@sentry/react-native";
 import type { SeverityLevel } from "@sentry/types";
 import { Platform } from "react-native";
 
-import {
-  NetworkError,
-  ApiError,
-  CacheError,
-  AuthenticationError,
-  DatabaseError,
-  NotificationError,
-} from "../types/errors";
+import { NetworkError, ApiError, CacheError, AuthenticationError, DatabaseError, NotificationError } from "@errors/errors";
 
 type ErrorSeverity = SeverityLevel;
 

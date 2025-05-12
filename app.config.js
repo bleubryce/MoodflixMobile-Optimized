@@ -19,10 +19,7 @@ module.exports = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.moodflix.mobile",
-    requireFullScreen: true,
-    infoPlist: {
-      UIViewControllerBasedStatusBarAppearance: true
-    }
+    requireFullScreen: true
   },
   android: {
     package: "com.moodflix.mobile",

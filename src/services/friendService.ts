@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { supabase } from "../lib/supabase";
-import { AuthenticationError, DatabaseError, NetworkError, CacheError } from "../types/errors";
+import { AuthenticationError, DatabaseError, NetworkError, CacheError } from "@errors/errors";
 import { ErrorHandler } from "../utils/errorHandler";
 import { User } from "../types/user";
 

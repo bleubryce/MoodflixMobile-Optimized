@@ -1,9 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
-import { supabase } from "../lib/supabase";
-import { CacheError, NotificationError, DatabaseError } from "../types/errors";
-import { ErrorHandler } from "../utils/errorHandler";
+import { supabase } from "@lib/supabase";
+import { CacheError, NotificationError, DatabaseError } from "@errors/errors";
+import { ErrorHandler } from "@utils/errorHandler";
 
 const NOTIFICATION_PREFERENCES_KEY = "@notification_preferences";
 const NOTIFICATION_TOKEN_KEY = "@notification_token";
@@ -297,8 +297,53 @@ class NotificationService {
     payload?: NotificationPayload
   ): Promise<void> {
     try {
-      // Implementation for sending notifications
-      // This would typically integrate with a push notification service
+      // Look up the user's push token from Supabase
+      const { data: tokens, error } = await supabase
+        .from("notification_tokens")
+        .select("token")
+        .eq("user_id", userId)
+        .limit(1);
+
+      if (error) {
+        throw new DatabaseError(
+          "Failed to fetch notification token",
+          "read",
+          "notification_tokens",
+          error
+        );
+      }
+
+      if (!tokens || tokens.length === 0) {
+        console.warn(`No push token found for user ${userId}`);
+        return;
+      }
+
+      const pushToken = tokens[0].token;
+      const message = {
+        to: pushToken,
+        sound: "default",
+        title,
+        body,
+        data: payload || {},
+      };
+
+      // Send the notification via Expo push API
+      const response = await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Accept-encoding": "gzip, deflate",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(message),
+      });
+
+      if (!response.ok) {
+        throw new NotificationError(
+          `Failed to send push notification: ${response.statusText}`,
+          "delivery"
+        );
+      }
     } catch (error) {
       if (error instanceof Error) {
         const notificationError = new NotificationError(

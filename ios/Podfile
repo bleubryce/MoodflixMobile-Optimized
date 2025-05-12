@@ -42,6 +42,9 @@ target 'MoodflixMobile' do
   use_expo_modules!
   config = use_native_modules!
 
+  # Pin fmt version
+  pod 'fmt', '~> 6.2.1'
+
   use_react_native!(
     :path => config[:reactNativePath],
     :hermes_enabled => true,
@@ -49,19 +52,65 @@ target 'MoodflixMobile' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
+  pre_install do |installer|
+    # Apply fmt patch if it exists
+    patch_path = File.join(__dir__, 'patches/fmt-core.patch')
+    if File.exist?(patch_path)
+      fmt_core_path = File.join(installer.sandbox.root, "fmt/include/fmt/core.h")
+      if File.exist?(fmt_core_path)
+        Pod::UI.puts "Applying fmt patch..."
+        system("cd #{File.dirname(fmt_core_path)} && patch -p0 < #{patch_path}")
+      end
+    end
+  end
+
   post_install do |installer|
     react_native_post_install(installer)
-    
+
+    # Configure build settings for all targets
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
+        # Set minimum iOS version
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '14.0'
         
-        if target.name == 'fmt'
+        # Enhanced fmt configuration
+        if target.name == 'fmt' || target.name.include?('fmt')
           config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
           config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'FMT_USE_NONTYPE_TEMPLATE_PARAMETERS=0'
           config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'FMT_USE_CHAR8_T=0'
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'FMT_CHAR8_TYPE=char'
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'FMT_DEPRECATED_OSTREAM=1'
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'FMT_USE_INT128=0'
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'FMT_EXCEPTIONS=0'
+          config.build_settings['OTHER_CPLUSPLUSFLAGS'] = '$(inherited) -Wno-deprecated-declarations -Wno-unused-result'
           config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
-          config.build_settings['CLANG_CXX_LIBRARY'] = 'libc++'
+        end
+
+        # Suppress deprecation warnings for libvmaf and glog
+        if ['libvmaf', 'glog'].any? { |name| target.name.include?(name) }
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << '_LIBCPP_DISABLE_AVAILABILITY=1'
+          config.build_settings['OTHER_CFLAGS'] = '$(inherited) -Wno-deprecated-declarations -Wno-deprecated-implementations'
+          config.build_settings['GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS'] = 'NO'
+        end
+      end
+
+      # Handle script phases
+      target.build_phases.each do |build_phase|
+        if build_phase.respond_to?(:name) && build_phase.respond_to?(:shell_script)
+          if ['EXConstants', 'EXUpdates', 'hermes-engine'].include?(target.name)
+            # Only run script phases when not under CocoaPods
+            if build_phase.shell_script.include?('Generate app.config') ||
+               build_phase.shell_script.include?('Generate app.manifest') ||
+               build_phase.shell_script.include?('Replace Hermes')
+              build_phase.shell_script = %Q(
+                if [ "${COCOAPODS}" != "1" ]; then
+                  #{build_phase.shell_script}
+                fi
+              ).strip
+              build_phase.dependency_file = nil
+            end
+          end
         end
       end
     end

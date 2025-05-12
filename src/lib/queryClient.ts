@@ -7,11 +7,7 @@ import {
   MutationCache,
 } from "@tanstack/react-query";
 
-import {
-  NetworkError,
-  AuthenticationError,
-  DatabaseError,
-} from "../types/errors";
+import { NetworkError, AuthenticationError, DatabaseError } from "@errors/errors";
 import { ErrorHandler } from "../utils/errorHandler";
 
 const errorHandler = ErrorHandler.getInstance();

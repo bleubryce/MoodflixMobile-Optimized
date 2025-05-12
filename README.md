@@ -58,6 +58,7 @@ Create a `.env` file in the root directory with the following variables:
 TMDB_API_KEY=your_tmdb_api_key
 SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
+SENTRY_DSN=your_sentry_dsn
 ```
 
 ## Project Structure
@@ -102,6 +103,14 @@ See the [App Store Preparation Guide](./app_store_preparation.md) for detailed i
 
 For detailed documentation, see the [Documentation](./documentation.md) file.
 
+## Error Handling & Logging
+
+- All errors are routed through a centralized ErrorHandler, which logs to Sentry in production and only logs to the console in development.
+- Custom error classes (e.g., CacheError, DatabaseError, CacheNotConfiguredError, UnknownEntityError) are used for more granular error handling.
+- User-facing errors are surfaced in a friendly way via error boundaries and UI notifications.
+- Console logs are suppressed in production builds.
+- Sentry DSN is required in the environment for error reporting.
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
@@ -112,3 +121,35 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [Supabase](https://supabase.io/) for backend services
 - [React Native Paper](https://callstack.github.io/react-native-paper/) for UI components
 - [Expo](https://expo.dev/) for development tools
+
+## Troubleshooting
+
+### Expo Simulator Timeout (xcrun code 60)
+
+**Issue:**
+
+xcrun exited with non-zero code: 60 – The iOS simulator timed out when attempting to open the Expo URL.
+
+**Resolution Steps:**
+
+1. Restarted the iOS simulator:
+   ```sh
+   xcrun simctl shutdown all
+   xcrun simctl boot "iPhone 16 Pro"
+   ```
+2. Verified no stale processes on port 8081:
+   ```sh
+   lsof -i :8081
+   ```
+3. Restarted Metro with a clean cache:
+   ```sh
+   npx expo start --clear
+   ```
+
+**Outcome:**
+
+Metro started successfully; no further timeout or port conflicts observed. The app is now ready to launch with `i` from the Expo CLI.
+
+**Next Steps:**
+- Press `i` in the Expo CLI to open the app in the iOS Simulator.
+- If any error reappears, capture the full stack trace for further troubleshooting.

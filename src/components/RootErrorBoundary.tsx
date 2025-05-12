@@ -2,7 +2,7 @@ import NetInfo from "@react-native-community/netinfo";
 import React, { Component, ReactNode } from "react";
 import { View, Text, Button, StyleSheet } from "react-native";
 
-import { NetworkError, ApiError, CacheError } from "../types/errors";
+import { NetworkError, ApiError, CacheError } from "@errors/errors";
 import { ErrorHandler } from "../utils/errorHandler";
 
 interface Props {

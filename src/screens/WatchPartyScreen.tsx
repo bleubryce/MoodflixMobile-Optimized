@@ -20,6 +20,7 @@ import {
   IconButton,
   useTheme,
 } from "react-native-paper";
+import { MoodPartyProvider, MoodPartySelector, ParticipantMoodList } from '@features/watch-party';
 
 export const WatchPartyScreen: React.FC = () => {
   const route = useRoute();
@@ -181,6 +182,35 @@ export const WatchPartyScreen: React.FC = () => {
     }
   };
 
+  const renderParticipant = ({ item }) => (
+    <Card style={styles.participantCard}>
+      <Card.Title
+        title={item.username}
+        left={(props) => (
+          <Avatar.Text
+            {...props}
+            label={item.username.substring(0, 2).toUpperCase()}
+            size={40}
+          />
+        )}
+      />
+    </Card>
+  );
+
+  const renderChatMessage = ({ item }) => (
+    <View style={styles.messageContainer}>
+      <Avatar.Text
+        size={32}
+        label={item.sender.username.substring(0, 2).toUpperCase()}
+        style={styles.messageAvatar}
+      />
+      <View style={styles.messageContent}>
+        <Text style={styles.messageSender}>{item.sender.username}</Text>
+        <Text>{item.content}</Text>
+      </View>
+    </View>
+  );
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.centerContent]}>
@@ -216,177 +246,143 @@ export const WatchPartyScreen: React.FC = () => {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
-    >
-      <View style={styles.header}>
-        <Text style={styles.title}>{party.movie.title}</Text>
-        <View style={styles.headerButtons}>
-          <IconButton
-            icon="account-group"
-            size={24}
-            onPress={() => setShowParticipants(!showParticipants)}
-          />
-          <IconButton
-            icon="account-plus"
-            size={24}
-            onPress={() => setInviteDialogVisible(true)}
-          />
-        </View>
-      </View>
-
-      <View style={styles.videoContainer}>
-        <Video
-          ref={videoRef}
-          style={styles.video}
-          source={{
-            uri:
-              party.movie.videoUrl ||
-              `https://example.com/videos/${party.movieId}.mp4`,
-          }}
-          useNativeControls={false}
-          resizeMode={ResizeMode.CONTAIN}
-          shouldPlay={isPlaying}
-          onPlaybackStatusUpdate={(status) => {
-            if (status.isLoaded && status.didJustFinish) {
-              setIsPlaying(false);
-              watchPartyService.updatePlaybackState(
-                false,
-                status.positionMillis,
-              );
-            }
-          }}
-        />
-        <View style={styles.videoControls}>
-          <IconButton
-            icon={isPlaying ? "pause" : "play"}
-            size={36}
-            onPress={handlePlayPause}
-          />
-          <IconButton
-            icon="skip-backward"
-            size={36}
-            onPress={() => handleSeek(0)}
-          />
-        </View>
-      </View>
-
-      <View style={styles.contentContainer}>
-        {showParticipants ? (
-          <Card style={styles.participantsCard}>
-            <Card.Title title="Participants" />
-            <Card.Content>
-              <FlatList
-                data={participants}
-                keyExtractor={(item) => item.userId}
-                renderItem={({ item }) => (
-                  <View style={styles.participantItem}>
-                    <Avatar.Image
-                      size={40}
-                      source={
-                        item.avatarUrl
-                          ? { uri: item.avatarUrl }
-                          : require("../../assets/default-avatar.png")
-                      }
-                    />
-                    <View style={styles.participantInfo}>
-                      <Text>{item.username}</Text>
-                      <Text style={styles.statusText}>{item.status}</Text>
-                    </View>
-                  </View>
-                )}
-              />
-            </Card.Content>
-          </Card>
-        ) : (
-          <View style={styles.chatContainer}>
-            <ScrollView
-              ref={chatScrollRef}
-              style={styles.chatMessages}
-              contentContainerStyle={styles.chatMessagesContent}
-            >
-              {chatMessages.map((msg) => (
-                <View
-                  key={msg.id}
-                  style={[
-                    styles.chatBubble,
-                    msg.type === "system"
-                      ? styles.systemMessage
-                      : styles.userMessage,
-                  ]}
-                >
-                  {msg.type !== "system" && (
-                    <Text style={styles.messageUsername}>{msg.username}</Text>
-                  )}
-                  <Text style={styles.messageContent}>{msg.content}</Text>
-                  <Text style={styles.messageTime}>
-                    {new Date(msg.timestamp).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-            <View style={styles.chatInputContainer}>
-              <TextInput
-                style={styles.chatInput}
-                value={message}
-                onChangeText={setMessage}
-                placeholder="Type a message..."
-                mode="outlined"
+    <MoodPartyProvider>
+      <View style={styles.container}>
+        <MoodPartySelector />
+        <ParticipantMoodList />
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+        >
+          <View style={styles.header}>
+            <Text style={styles.title}>{party.movie.title}</Text>
+            <View style={styles.headerButtons}>
+              <IconButton
+                icon="account-group"
+                size={24}
+                onPress={() => setShowParticipants(!showParticipants)}
               />
               <IconButton
-                icon="send"
+                icon="account-plus"
                 size={24}
-                onPress={handleSendMessage}
-                disabled={!message.trim()}
+                onPress={() => setInviteDialogVisible(true)}
               />
             </View>
           </View>
-        )}
-      </View>
 
-      {inviteDialogVisible && (
-        <View style={styles.inviteDialog}>
-          <Card>
-            <Card.Title title="Invite Friends" />
-            <Card.Content>
-              <FlatList
-                data={friends}
-                keyExtractor={(item) => item.userId}
-                renderItem={({ item }) => (
-                  <View style={styles.friendItem}>
-                    <Avatar.Image
-                      size={40}
-                      source={
-                        item.avatar
-                          ? { uri: item.avatar }
-                          : require("../../assets/default-avatar.png")
-                      }
-                    />
-                    <Text style={styles.friendName}>{item.name}</Text>
-                    <Button
-                      mode="contained"
-                      onPress={() => handleInviteFriend(item.userId)}
-                    >
-                      Invite
-                    </Button>
-                  </View>
-                )}
+          <View style={styles.videoContainer}>
+            <Video
+              ref={videoRef}
+              style={styles.video}
+              source={{
+                uri:
+                  party.movie.videoUrl ||
+                  `https://example.com/videos/${party.movieId}.mp4`,
+              }}
+              useNativeControls={false}
+              resizeMode={ResizeMode.CONTAIN}
+              shouldPlay={isPlaying}
+              onPlaybackStatusUpdate={(status) => {
+                if (status.isLoaded && status.didJustFinish) {
+                  setIsPlaying(false);
+                  watchPartyService.updatePlaybackState(
+                    false,
+                    status.positionMillis,
+                  );
+                }
+              }}
+            />
+            <View style={styles.videoControls}>
+              <IconButton
+                icon={isPlaying ? "pause" : "play"}
+                size={36}
+                onPress={handlePlayPause}
               />
-            </Card.Content>
-            <Card.Actions>
-              <Button onPress={() => setInviteDialogVisible(false)}>
-                Close
-              </Button>
-            </Card.Actions>
-          </Card>
-        </View>
-      )}
-    </KeyboardAvoidingView>
+              <IconButton
+                icon="skip-backward"
+                size={36}
+                onPress={() => handleSeek(0)}
+              />
+            </View>
+          </View>
+
+          <View style={styles.contentContainer}>
+            {showParticipants ? (
+              <Card style={styles.participantsCard}>
+                <Card.Title title="Participants" />
+                <Card.Content>
+                  <FlatList
+                    data={participants}
+                    keyExtractor={(item) => item.userId}
+                    renderItem={renderParticipant}
+                  />
+                </Card.Content>
+              </Card>
+            ) : (
+              <View style={styles.chatContainer}>
+                <ScrollView
+                  ref={chatScrollRef}
+                  style={styles.chatMessages}
+                  contentContainerStyle={styles.chatMessagesContent}
+                >
+                  {chatMessages.map((msg) => renderChatMessage({ item: msg }))}
+                </ScrollView>
+                <View style={styles.chatInputContainer}>
+                  <TextInput
+                    style={styles.chatInput}
+                    value={message}
+                    onChangeText={setMessage}
+                    placeholder="Type a message..."
+                    mode="outlined"
+                  />
+                  <IconButton
+                    icon="send"
+                    size={24}
+                    onPress={handleSendMessage}
+                    disabled={!message.trim()}
+                  />
+                </View>
+              </View>
+            )}
+          </View>
+
+          {inviteDialogVisible && (
+            <View style={styles.inviteDialog}>
+              <Card>
+                <Card.Title title="Invite Friends" />
+                <Card.Content>
+                  <FlatList
+                    data={friends}
+                    keyExtractor={(item) => item.userId}
+                    renderItem={({ item }) => (
+                      <View style={styles.friendItem}>
+                        <Avatar.Text
+                          size={40}
+                          label={item.name.substring(0, 2).toUpperCase()}
+                        />
+                        <Text style={styles.friendName}>{item.name}</Text>
+                        <Button
+                          mode="contained"
+                          onPress={() => handleInviteFriend(item.userId)}
+                        >
+                          Invite
+                        </Button>
+                      </View>
+                    )}
+                  />
+                </Card.Content>
+                <Card.Actions>
+                  <Button onPress={() => setInviteDialogVisible(false)}>
+                    Close
+                  </Button>
+                </Card.Actions>
+              </Card>
+            </View>
+          )}
+        </KeyboardAvoidingView>
+      </View>
+    </MoodPartyProvider>
   );
 };
 
@@ -529,6 +525,24 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 16,
+  },
+  participantCard: {
+    marginBottom: 12,
+  },
+  messageContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  messageAvatar: {
+    marginRight: 8,
+  },
+  messageContent: {
+    flex: 1,
+  },
+  messageSender: {
+    fontWeight: "bold",
+    marginBottom: 4,
   },
 });
 

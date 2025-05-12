@@ -10,11 +10,13 @@ import { MovieCard } from "../MovieCard";
 interface MoodRecommendationsProps {
   mood: Mood;
   onMoviePress?: (movie: TMDBMovie) => void;
+  recommendationsWithReasons?: { movie: TMDBMovie; reason: string }[];
 }
 
 export const MoodRecommendations: React.FC<MoodRecommendationsProps> = ({
   mood,
   onMoviePress,
+  recommendationsWithReasons,
 }) => {
   const [movies, setMovies] = useState<TMDBMovie[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,6 +72,27 @@ export const MoodRecommendations: React.FC<MoodRecommendationsProps> = ({
       <View style={styles.centerContainer}>
         <Text>No recommendations found for your current mood.</Text>
       </View>
+    );
+  }
+
+  if (recommendationsWithReasons) {
+    return (
+      <FlatList
+        data={recommendationsWithReasons}
+        keyExtractor={(item) => item.movie.id.toString()}
+        renderItem={({ item }) => (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ fontSize: 12, color: '#888', marginBottom: 4 }}>{item.reason}</Text>
+            <MovieCard
+              testID={`movie-card-${item.movie.id}`}
+              movie={item.movie}
+              onPress={() => onMoviePress?.(item.movie)}
+            />
+          </View>
+        )}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+      />
     );
   }
 

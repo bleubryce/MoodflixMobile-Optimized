@@ -2,7 +2,7 @@ import { ENV } from "@config/env";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient, PostgrestError, AuthError } from "@supabase/supabase-js";
 
-import { ApiError, DatabaseError, AuthenticationError } from "../types/errors";
+import { ApiError, DatabaseError, AuthenticationError } from "@errors/errors";
 import { ErrorHandler } from "../utils/errorHandler";
 
 const errorHandler = ErrorHandler.getInstance();

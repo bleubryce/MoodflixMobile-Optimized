@@ -33,73 +33,26 @@ export const FriendsScreen: React.FC = () => {
   const theme = useTheme();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [addDialogVisible, setAddDialogVisible] = useState(false);
-  const [friendIdInput, setFriendIdInput] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"friends" | "requests">("friends");
-
-  const filteredFriends = friends.filter((friend) =>
-    friend.name.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-
-  const handleAddFriend = async () => {
-    if (!friendIdInput.trim()) {
-      setError("Please enter a valid friend ID");
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-      setError(null);
-      await sendFriendRequest(friendIdInput.trim());
-      setAddDialogVisible(false);
-      setFriendIdInput("");
-    } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to send friend request",
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  const [isDialogVisible, setIsDialogVisible] = useState(false);
+  const [friendEmail, setFriendEmail] = useState("");
 
   const renderFriendItem = ({ item }) => (
     <Card style={styles.card}>
       <Card.Title
-        title={item.name}
-        subtitle={item.status}
+        title={item.username}
         left={(props) => (
-          <Avatar.Image
+          <Avatar.Text
             {...props}
-            source={
-              item.avatar
-                ? { uri: item.avatar }
-                : require("../../assets/default-avatar.png")
-            }
+            label={item.username.substring(0, 2).toUpperCase()}
+            size={40}
           />
-        )}
-        right={(props) => (
-          <Button
-            {...props}
-            mode="text"
-            onPress={() =>
-              navigation.navigate("Profile", { userId: item.userId })
-            }
-          >
-            View
-          </Button>
         )}
       />
       <Card.Actions>
-        <Button
-          onPress={() => navigation.navigate("Chat", { friendId: item.userId })}
-        >
-          Message
+        <Button onPress={() => navigation.navigate("FriendProfile", { friendId: item.id })}>
+          View Profile
         </Button>
-        <Button onPress={() => removeFriend(item.userId)}>Remove</Button>
+        <Button onPress={() => removeFriend(item.id)}>Remove</Button>
       </Card.Actions>
     </Card>
   );
@@ -107,141 +60,83 @@ export const FriendsScreen: React.FC = () => {
   const renderRequestItem = ({ item }) => (
     <Card style={styles.card}>
       <Card.Title
-        title={item.senderName}
-        subtitle="Wants to be your friend"
+        title={item.username}
         left={(props) => (
-          <Avatar.Image
+          <Avatar.Text
             {...props}
-            source={
-              item.senderAvatar
-                ? { uri: item.senderAvatar }
-                : require("../../assets/default-avatar.png")
-            }
+            label={item.username.substring(0, 2).toUpperCase()}
+            size={40}
           />
         )}
       />
       <Card.Actions>
-        <Button
-          mode="contained"
-          onPress={() => acceptFriendRequest(item.id)}
-          style={{ marginRight: 8 }}
-        >
-          Accept
-        </Button>
-        <Button mode="outlined" onPress={() => declineFriendRequest(item.id)}>
-          Decline
-        </Button>
+        <Button onPress={() => acceptFriendRequest(item.id)}>Accept</Button>
+        <Button onPress={() => declineFriendRequest(item.id)}>Decline</Button>
       </Card.Actions>
     </Card>
   );
 
+  const handleSendRequest = async () => {
+    await sendFriendRequest(friendEmail);
+    setFriendEmail("");
+    setIsDialogVisible(false);
+  };
+
   return (
     <View style={styles.container}>
-      <View style={styles.tabContainer}>
-        <Button
-          mode={activeTab === "friends" ? "contained" : "outlined"}
-          onPress={() => setActiveTab("friends")}
-          style={styles.tabButton}
-        >
-          Friends ({friends.length})
-        </Button>
-        <Button
-          mode={activeTab === "requests" ? "contained" : "outlined"}
-          onPress={() => setActiveTab("requests")}
-          style={styles.tabButton}
-        >
-          Requests ({friendRequests.length})
-        </Button>
-      </View>
-
-      {activeTab === "friends" ? (
+      <Searchbar
+        placeholder="Search friends"
+        onChangeText={setSearchQuery}
+        value={searchQuery}
+        style={styles.searchBar}
+      />
+      
+      {friendRequests.length > 0 && (
         <>
-          <Searchbar
-            placeholder="Search friends"
-            onChangeText={setSearchQuery}
-            value={searchQuery}
-            style={styles.searchBar}
-          />
+          <Text style={styles.sectionTitle}>Friend Requests</Text>
           <FlatList
-            data={filteredFriends}
-            renderItem={renderFriendItem}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContainer}
-            refreshControl={
-              <RefreshControl
-                refreshing={isLoadingFriends}
-                onRefresh={refreshFriends}
-                colors={[theme.colors.primary]}
-              />
-            }
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>
-                  {searchQuery
-                    ? "No friends match your search"
-                    : "You have no friends yet"}
-                </Text>
-                {!searchQuery && (
-                  <Button
-                    mode="contained"
-                    onPress={() => setAddDialogVisible(true)}
-                    style={styles.addButton}
-                  >
-                    Add Friends
-                  </Button>
-                )}
-              </View>
-            }
+            data={friendRequests}
+            renderItem={renderRequestItem}
+            keyExtractor={(item) => item.id.toString()}
+            style={styles.list}
           />
+          <Divider style={styles.divider} />
         </>
-      ) : (
-        <FlatList
-          data={friendRequests}
-          renderItem={renderRequestItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
-          refreshControl={
-            <RefreshControl
-              refreshing={isLoadingRequests}
-              onRefresh={refreshFriends}
-              colors={[theme.colors.primary]}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No pending friend requests</Text>
-            </View>
-          }
-        />
       )}
 
+      <Text style={styles.sectionTitle}>Friends</Text>
+      <FlatList
+        data={friends.filter((friend) =>
+          friend.username.toLowerCase().includes(searchQuery.toLowerCase())
+        )}
+        renderItem={renderFriendItem}
+        keyExtractor={(item) => item.id.toString()}
+        style={styles.list}
+        refreshControl={
+          <RefreshControl refreshing={isLoadingFriends} onRefresh={refreshFriends} />
+        }
+      />
+
       <FAB
-        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
         icon="plus"
-        onPress={() => setAddDialogVisible(true)}
+        style={styles.fab}
+        onPress={() => setIsDialogVisible(true)}
       />
 
       <Portal>
-        <Dialog
-          visible={addDialogVisible}
-          onDismiss={() => setAddDialogVisible(false)}
-        >
+        <Dialog visible={isDialogVisible} onDismiss={() => setIsDialogVisible(false)}>
           <Dialog.Title>Add Friend</Dialog.Title>
           <Dialog.Content>
             <TextInput
-              label="Friend ID"
-              value={friendIdInput}
-              onChangeText={setFriendIdInput}
+              label="Friend's Email"
+              value={friendEmail}
+              onChangeText={setFriendEmail}
               mode="outlined"
-              error={!!error}
             />
-            {error && <Text style={styles.errorText}>{error}</Text>}
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setAddDialogVisible(false)}>Cancel</Button>
-            <Button onPress={handleAddFriend} loading={isSubmitting}>
-              Send Request
-            </Button>
+            <Button onPress={() => setIsDialogVisible(false)}>Cancel</Button>
+            <Button onPress={handleSendRequest}>Send Request</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -252,50 +147,30 @@ export const FriendsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
-  },
-  tabContainer: {
-    flexDirection: "row",
     padding: 16,
-    backgroundColor: "#fff",
-  },
-  tabButton: {
-    flex: 1,
-    marginHorizontal: 4,
   },
   searchBar: {
-    margin: 16,
-    elevation: 2,
+    marginBottom: 16,
   },
-  listContainer: {
-    padding: 16,
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 8,
+  },
+  list: {
+    flex: 1,
   },
   card: {
-    marginBottom: 16,
-    elevation: 2,
+    marginBottom: 8,
   },
-  emptyContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 32,
-  },
-  emptyText: {
-    fontSize: 16,
-    marginBottom: 16,
-    textAlign: "center",
-  },
-  addButton: {
-    marginTop: 16,
+  divider: {
+    marginVertical: 16,
   },
   fab: {
     position: "absolute",
     margin: 16,
     right: 0,
     bottom: 0,
-  },
-  errorText: {
-    color: "red",
-    marginTop: 8,
   },
 });
 

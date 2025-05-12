@@ -22,6 +22,7 @@ import { ProfileScreen } from "@screens/ProfileScreen";
 import WatchPartyScreen from "@screens/WatchPartyScreen";
 
 import { SettingsNavigator } from "./SettingsNavigator";
+import { MoodPlaylistsScreen } from '@features/moodPlaylists';
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -30,6 +31,7 @@ export type RootStackParamList = {
   MovieDetail: { movieId: number };
   WatchParty: { movieId: number };
   Settings: undefined;
+  MoodPlaylists: undefined;
 };
 
 export type MainTabParamList = {
@@ -152,6 +154,11 @@ export const RootNavigator = () => {
         name="Settings"
         component={SettingsNavigator}
         options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="MoodPlaylists"
+        component={MoodPlaylistsScreen}
+        options={{ title: 'Mood Playlists' }}
       />
     </Stack.Navigator>
   );

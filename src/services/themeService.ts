@@ -1,5 +1,5 @@
 import { ErrorHandler } from "../utils/errorHandler";
-import { CacheError, DatabaseError } from "../types/errors";
+import { CacheError, DatabaseError } from "@errors/errors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
 import { ColorSchemeName, useColorScheme } from "react-native";

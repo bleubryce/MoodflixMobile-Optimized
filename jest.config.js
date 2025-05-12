@@ -16,6 +16,7 @@ module.exports = {
   coverageReporters: ['json', 'lcov', 'text', 'clover'],
   moduleNameMapper: {
     '\\.svg': '<rootDir>/__mocks__/svgMock.js',
+    '^@errors/(.*)$': '<rootDir>/src/types/$1',
   },
   testEnvironment: 'node',
   testMatch: ['**/__tests__/**/*.test.[jt]s?(x)'],
