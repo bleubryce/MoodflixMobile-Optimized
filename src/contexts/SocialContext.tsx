@@ -1,5 +1,5 @@
 import { activityService } from "@services/activityService";
-import { FriendService, Friend, FriendRequest } from "@services/friendService";
+import { friendService, Friend, FriendRequest } from "@services/friendService";
 import React, {
   createContext,
   useContext,
@@ -50,8 +50,6 @@ export const SocialProvider: React.FC<{ children: React.ReactNode }> = ({
   const [lastActivityTimestamp, setLastActivityTimestamp] = useState<
     string | null
   >(null);
-
-  const friendService = FriendService.getInstance();
 
   useEffect(() => {
     loadInitialData();

@@ -43,25 +43,30 @@ export class ErrorHandler {
   private initializeErrorTracking(): void {
     if (this.isInitialized) return;
 
-    Sentry.init({
-      dsn: ENV.SENTRY_DSN,
-      enableAutoSessionTracking: true,
-      debug: ENV.APP_ENV === "development",
-      tracesSampleRate: ENV.APP_ENV === "production" ? 0.2 : 1.0,
-      enabled: ENV.APP_ENV !== "test",
-      integrations: [
-        new Sentry.ReactNativeTracing({
-          routingInstrumentation: new Sentry.ReactNavigationInstrumentation(),
-          tracingOrigins: ["localhost", /^https:\/\//],
-        }),
-      ],
-      beforeSend(event) {
-        if (ENV.APP_ENV === "development") {
-          return null;
-        }
-        return event;
-      },
-    });
+    if (ENV.SENTRY_DSN) {
+      Sentry.init({
+        dsn: ENV.SENTRY_DSN,
+        enableAutoSessionTracking: true,
+        debug: ENV.APP_ENV === "development",
+        tracesSampleRate: ENV.APP_ENV === "production" ? 0.2 : 1.0,
+        enabled: ENV.APP_ENV !== "test",
+        integrations: [
+          new Sentry.ReactNativeTracing({
+            routingInstrumentation: new Sentry.ReactNavigationInstrumentation(),
+            tracingOrigins: ["localhost", /^https:\/\//],
+          }),
+        ],
+        beforeSend(event) {
+          if (ENV.APP_ENV === "development") {
+            return null;
+          }
+          return event;
+        },
+      });
+    } else {
+      // eslint-disable-next-line no-console
+      console.warn("[Sentry] SENTRY_DSN not set; Sentry will be disabled.");
+    }
 
     this.isInitialized = true;
   }

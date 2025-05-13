@@ -85,7 +85,7 @@ const requiredVars: (keyof Config)[] = [
   "SUPABASE_URL",
   "SUPABASE_ANON_KEY",
   "TMDB_API_KEY",
-  "SENTRY_DSN",
+  // "SENTRY_DSN", // Remove from always-required
 ];
 
 requiredVars.forEach((varName) => {
@@ -93,6 +93,16 @@ requiredVars.forEach((varName) => {
     throw new Error(`Missing required environment variable: ${varName}`);
   }
 });
+
+// SENTRY_DSN: Only required in production
+if (!ENV.SENTRY_DSN) {
+  if (ENV.APP_ENV === "production") {
+    throw new Error("Missing required environment variable: SENTRY_DSN");
+  } else {
+    // eslint-disable-next-line no-console
+    console.warn("[env] SENTRY_DSN not set; Sentry will be disabled in development.");
+  }
+}
 
 export const {
   APP_ENV,
